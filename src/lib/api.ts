@@ -1,10 +1,13 @@
 import axios from 'axios';
-import type { Answer, Evidence, FormProgress, Question, Topic } from '../types/pld';
+import type { User, PldSection, PldAttachmentCategory } from '../types/pld';
 
-const API_URL = 'http://localhost:3001/api/form';
+const rawBase = (import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api').trim();
+const API_BASE_URL = /\/api\/?$/.test(rawBase)
+  ? rawBase.replace(/\/+$/, '')
+  : `${rawBase.replace(/\/+$/, '')}/api`;
 
 export const api = axios.create({
-  baseURL: API_URL,
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -13,6 +16,12 @@ export const api = axios.create({
 // Interceptors para logging
 api.interceptors.request.use(
   (config) => {
+    // Anexa token JWT, se existir
+    const token = window.localStorage.getItem('pld_token');
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
     console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`);
     return config;
   },
@@ -30,66 +39,92 @@ api.interceptors.response.use(
   }
 );
 
-// Funções específicas do PLD
-export const pldApi = {
-  // Tópicos
-  getTopics: () => api.get<{ topics: Topic[] }>('/topics'),
-  createTopic: (data: { name: string; description?: string; internalNorm?: string }) =>
-    api.post<{ topic: Topic }>('/topics', data),
-  deleteTopic: (topicId: string) =>
-    api.delete(`/topics/${topicId}`),
-  reorderTopics: (topicIds: string[]) =>
-    api.patch('/topics/reorder', { topicIds }),
+// ===== Auth =====
+export const authApi = {
+  login: (data: { email: string; password: string }) =>
+    api.post<{ token: string; user: User }>('/auth/login', data),
 
-  // Perguntas
-  createQuestion: (data: { 
-    topicId: string; 
-    title: string; 
-    description?: string; 
-    criticality?: string;
-  }) => api.post<{ question: Question }>('/questions', data),
-  deleteQuestion: (questionId: string) =>
-    api.delete(`/questions/${questionId}`),
-  
-  updateQuestionApplicable: (questionId: string, isApplicable: boolean) =>
-    api.patch<{ question: Question }>(`/questions/${questionId}/applicable`, { isApplicable }),
-  
-  reorderQuestions: (topicId: string, questionIds: string[]) =>
-    api.patch('/questions/reorder', { topicId, questionIds }),
+  register: (data: { name: string; email: string; password: string }) =>
+    api.post<{ token: string; user: User }>('/auth/register', data),
 
-  // Respostas
-  answerQuestion: (data: {
-    questionId: string;
-    response: boolean;
-    justification?: string;
-    deficiency?: string;
-    recommendation?: string;
-  }) => api.post<{ answer: Answer }>('/answers', data),
-  
-  getAnswer: (questionId: string) =>
-    api.get<{ answer: Answer }>(`/answers/${questionId}`),
+  me: () => api.get<{ user: User }>('/auth/me'),
 
-  // Evidências
-  uploadEvidences: (answerId: string, files: File[]) => {
-    const formData = new FormData();
-    files.forEach(file => formData.append('files', file));
-    return api.post<{ evidences: Evidence[] }>(
-      `/answers/${answerId}/evidences`, 
-      formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } }
-    );
-  },
-  
-  deleteEvidence: (evidenceId: string) =>
-    api.delete(`/evidences/${evidenceId}`),
+  forgotPassword: (data: { email: string }) =>
+    api.post<{ message: string }>('/auth/forgot-password', data),
 
-  // Progresso
-  getProgress: () => api.get<{ progress: FormProgress }>('/progress'),
-  getTopicProgress: (topicId: string) =>
-    api.get<{ progress: unknown }>(`/progress/topic/${topicId}`),
-
-  // Dados completos
-  getFormData: () => api.get<{ data: Topic[] }>('/data'),
+  resetPassword: (data: { token: string; password: string }) =>
+    api.post<{ message: string }>('/auth/reset-password', data),
 };
 
-export type { Topic, Question, Answer, Evidence, FormProgress } from '../types/pld';
+// Relatórios
+export const reportApi = {
+  generateMyReport: (type: 'PARTIAL' | 'FULL' = 'FULL', format: 'PDF' | 'DOCX' = 'PDF') =>
+    api.get('/report/me', { params: { type, format } }),
+
+  generateUserReport: (
+    userId: string,
+    type: 'PARTIAL' | 'FULL' = 'FULL',
+    format: 'PDF' | 'DOCX' = 'PDF',
+    topicIds?: string[]
+  ) =>
+    api.get(`/report/user/${userId}`, {
+      params: { type, format, topicIds: topicIds?.length ? topicIds.join(',') : undefined },
+    }),
+
+  generatePldBuilderReport: (format: 'PDF' | 'DOCX' = 'DOCX') =>
+    api.get<{ report: unknown; url: string }>('/report/pld-builder', { params: { format } }),
+};
+// Builder PLD (novo)
+export const pldBuilderApi = {
+  listSections: () => api.get<{ sections: PldSection[] }>('/pld/sections'),
+
+  createSection: (data: {
+    item: string;
+    customLabel?: string | null;
+    hasNorma?: boolean;
+    normaReferencia?: string | null;
+    descricao?: string | null;
+  }) => api.post<{ section: PldSection }>('/pld/sections', data),
+
+  updateSection: (id: string, data: Partial<PldSection>) =>
+    api.patch<{ section: PldSection }>(`/pld/sections/${id}`, data),
+
+  deleteSection: (id: string) => api.delete(`/pld/sections/${id}`),
+
+  reorderSections: (sectionIds: string[]) =>
+    api.post('/pld/sections/reorder', { sectionIds }),
+
+  uploadNorma: (sectionId: string, file: File, referencia?: string | null) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (referencia) formData.append('referencia', referencia);
+    return api.post<{ section: PldSection }>(`/pld/sections/${sectionId}/norma`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+
+  createQuestion: (sectionId: string, texto: string) =>
+    api.post<{ question: any }>(`/pld/questions`, { sectionId, texto }),
+
+  updateQuestion: (id: string, data: Record<string, unknown>) =>
+    api.patch<{ question: any }>(`/pld/questions/${id}`, data),
+
+  deleteQuestion: (id: string) => api.delete(`/pld/questions/${id}`),
+
+  reorderQuestions: (sectionId: string, questionIds: string[]) =>
+    api.post('/pld/questions/reorder', { sectionId, questionIds }),
+
+  uploadAttachment: (questionId: string, file: File, category: PldAttachmentCategory, referenceText?: string | null) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('category', category);
+    if (referenceText) formData.append('referenceText', referenceText);
+    return api.post(`/pld/questions/${questionId}/upload`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+
+  deleteAttachment: (attachmentId: string) => api.delete(`/pld/attachments/${attachmentId}`),
+
+  concludeBuilder: () => api.post('/pld/conclude'),
+};

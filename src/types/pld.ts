@@ -1,50 +1,4 @@
-export interface Topic {
-  id: string;
-  name: string;
-  description?: string;
-  internalNorm?: string;
-  order: number;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-  questions: Question[];
-}
 
-export interface Question {
-  id: string;
-  title: string;
-  description?: string;
-  isApplicable: boolean;
-  criticality: 'BAIXA' | 'MEDIA' | 'ALTA';
-  order: number;
-  topicId: string;
-  createdAt: string;
-  updatedAt: string;
-  answer?: Answer;
-}
-
-export interface Answer {
-  id: string;
-  response: boolean;
-  justification?: string;
-  deficiency?: string;
-  recommendation?: string;
-  questionId: string;
-  createdAt: string;
-  updatedAt: string;
-  evidences: Evidence[];
-}
-
-export interface Evidence {
-  id: string;
-  filename: string;
-  originalName: string;
-  path: string;
-  mimeType: string;
-  size: number;
-  answerId: string;
-  uploadedAt: string;
-}
 
 export interface FormProgress {
   progress: number;
@@ -53,7 +7,17 @@ export interface FormProgress {
   totalQuestions: number;
 }
 
-// ENUMS para as opções do PLD
+export type UserRole = 'ADMIN' | 'USER';
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export const PLD_TOPICS = [
   'Política (PI)',
   'Avaliação Interna de Risco (AIR)',
@@ -61,14 +25,85 @@ export const PLD_TOPICS = [
   'Governança (GOV)',
   'Conheça seu Cliente (CSC)',
   'Conheça seu Funcionário (CSF)',
-  'Conheça seu Presidente de Serviço Terceirizado (CSPET)',
-  'Conheça seu Parente (CSP)',
+  'Conheça seu Prestador de Serviço Terceirizado (CSPST)',
+  'Conheça seu Parceiro (CSP)',
   'Monitoramento, Seleção, Análise e Comunicação (MSAC)',
-  'Sanções CSMU (CSMU)',
-  'Treinamento (TREN)',
+  'Sanções CSNU (CSNU)',
+  'Treinamento (TREIN)',
   'Desenvolvimento de Cultura Organizacional (DCO)',
   'Mecanismos de Acompanhamento (MAC)',
   'Auditoria (AUD)'
 ] as const;
 
+export const PLD_ITEM_OPTIONS = [...PLD_TOPICS, 'Outro (1)', 'Outro (2)'] as const;
+export type PldItemOption = typeof PLD_ITEM_OPTIONS[number];
+
 export type PLDTopicType = typeof PLD_TOPICS[number];
+
+// Novos tipos para o builder PLD
+export type PldAttachmentCategory =
+  | 'NORMA'
+  | 'TEMPLATE'
+  | 'RESPOSTA'
+  | 'DEFICIENCIA'
+  | 'TESTE_REQUISICAO'
+  | 'TESTE_RESPOSTA'
+  | 'TESTE_AMOSTRA'
+  | 'TESTE_EVIDENCIAS';
+
+export interface PldAttachment {
+  id: string;
+  sectionId?: string | null;
+  questionId?: string | null;
+  category: PldAttachmentCategory;
+  referenceText?: string | null;
+  filename: string;
+  originalName: string;
+  path: string;
+  mimeType: string;
+  size: number;
+  createdAt: string;
+}
+
+export interface PldQuestion {
+  id: string;
+  sectionId: string;
+  order: number;
+  texto: string;
+  aplicavel: boolean;
+  respondida: boolean;
+  templateRef?: string | null;
+  capitulacao?: string | null;
+  criticidade: 'BAIXA' | 'MEDIA' | 'ALTA';
+  resposta?: string | null;
+  respostaTexto?: string | null;
+  deficienciaTexto?: string | null;
+  recomendacaoTexto?: string | null;
+  testStatus?: 'SIM' | 'NAO' | 'NAO_PLANO' | null;
+  testDescription?: string | null;
+  actionOrigem?: string | null;
+  actionResponsavel?: string | null;
+  actionDescricao?: string | null;
+  actionDataApontamento?: string | null;
+  actionPrazoOriginal?: string | null;
+  actionPrazoAtual?: string | null;
+  actionComentarios?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  attachments: PldAttachment[];
+}
+
+export interface PldSection {
+  id: string;
+  item: string;
+  customLabel?: string | null;
+  hasNorma: boolean;
+  normaReferencia?: string | null;
+  descricao?: string | null;
+  order: number;
+  createdById?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  questions: PldQuestion[];
+  attachments: PldAttachment[];
+}
