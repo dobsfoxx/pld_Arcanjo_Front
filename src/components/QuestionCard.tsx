@@ -269,90 +269,6 @@ export const QuestionCard: React.FC<{
             <div className="text-sm text-slate-500">Questão marcada como não aplicável.</div>
           ) : (
             <div className="space-y-6">
-              <div className="space-y-3">
-                <label className="block text-sm font-bold text-slate-800 uppercase tracking-wider">Resposta</label>
-                <div className="bg-slate-50 rounded-xl p-2 inline-flex items-center border border-slate-200">
-                  <button
-                    type="button"
-                    onClick={() => update({ resposta: 'Sim', respondida: false })}
-                    disabled={!canEdit}
-                    className={`px-4 py-2 rounded-lg text-sm font-bold ${
-                      question.resposta === 'Sim'
-                        ? 'bg-white text-emerald-600 shadow-sm border border-emerald-100'
-                        : 'text-slate-500'
-                    } disabled:opacity-50 disabled:cursor-not-allowed`}
-                  >
-                    SIM
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => update({ resposta: 'Não', respondida: false })}
-                    disabled={!canEdit}
-                    className={`px-4 py-2 rounded-lg text-sm font-bold ${
-                      question.resposta === 'Não'
-                        ? 'bg-white text-red-600 shadow-sm border border-red-100'
-                        : 'text-slate-500'
-                    } disabled:opacity-50 disabled:cursor-not-allowed`}
-                  >
-                    NÃO
-                  </button>
-                </div>
-
-                <textarea
-                  maxLength={500}
-                  value={question.respostaTexto}
-                  onChange={(e) => update({ respostaTexto: e.target.value, respondida: false })}
-                  className="w-full border border-slate-200 rounded-xl p-3 text-sm text-slate-700"
-                  rows={3}
-                  placeholder="Justificativa/observações (500)"
-                  disabled={!canEdit}
-                />
-
-                <FileUpload
-                  label="Arquivo da resposta"
-                  file={question.respostaArquivo}
-                  onFileSelect={(f) => update({ respostaArquivo: f, respondida: false })}
-                  onRemove={() => update({ respostaArquivo: null, respondida: false })}
-                  disabled={!canEdit}
-                />
-
-                {question.resposta === 'Não' && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="block text-sm font-bold text-slate-800 uppercase tracking-wider">Deficiência (500)</label>
-                      <textarea
-                        maxLength={500}
-                        value={question.deficienciaTexto}
-                        onChange={(e) => update({ deficienciaTexto: e.target.value, respondida: false })}
-                        className="w-full border border-slate-200 rounded-xl p-3 text-sm text-slate-700"
-                        rows={4}
-                        placeholder="Deficiência"
-                        disabled={!canEdit}
-                      />
-                      <FileUpload
-                        label="Arquivo da deficiência"
-                        file={question.deficienciaArquivo}
-                        onFileSelect={(f) => update({ deficienciaArquivo: f, respondida: false })}
-                        onRemove={() => update({ deficienciaArquivo: null, respondida: false })}
-                        disabled={!canEdit}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="block text-sm font-bold text-slate-800 uppercase tracking-wider">Recomendação (500)</label>
-                      <textarea
-                        maxLength={500}
-                        value={question.recomendacaoTexto}
-                        onChange={(e) => update({ recomendacaoTexto: e.target.value, respondida: false })}
-                        className="w-full border border-slate-200 rounded-xl p-3 text-sm text-slate-700"
-                        rows={4}
-                        placeholder="Recomendação"
-                        disabled={!canEdit}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
               <div className="space-y-3 border-t border-slate-100 pt-4">
                 <div className="flex flex-col items-center justify-between">
                   <h5 className="text-md font-bold text-slate-500 uppercase tracking-wider">Teste?</h5>
@@ -538,6 +454,90 @@ export const QuestionCard: React.FC<{
                         rows={2}
                         value={question.test.actionPlan.comentarios}
                         onChange={(e) => updateActionPlan('comentarios', e.target.value)}
+                        disabled={!canEdit}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-sm font-bold text-slate-800 uppercase tracking-wider">Resposta</label>
+                <div className="bg-slate-50 rounded-xl p-2 inline-flex items-center border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => update({ resposta: 'Sim', respondida: false })}
+                    disabled={!canEdit}
+                    className={`px-4 py-2 rounded-lg text-sm font-bold ${
+                      question.resposta === 'Sim'
+                        ? 'bg-white text-emerald-600 shadow-sm border border-emerald-100'
+                        : 'text-slate-500'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    SIM
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => update({ resposta: 'Não', respondida: false })}
+                    disabled={!canEdit}
+                    className={`px-4 py-2 rounded-lg text-sm font-bold ${
+                      question.resposta === 'Não'
+                        ? 'bg-white text-red-600 shadow-sm border border-red-100'
+                        : 'text-slate-500'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    NÃO
+                  </button>
+                </div>
+
+                <textarea
+                  maxLength={500}
+                  value={question.respostaTexto}
+                  onChange={(e) => update({ respostaTexto: e.target.value, respondida: false })}
+                  className="w-full border border-slate-200 rounded-xl p-3 text-sm text-slate-700"
+                  rows={3}
+                  placeholder="Justificativa/observações (500)"
+                  disabled={!canEdit}
+                />
+
+                <FileUpload
+                  label="Arquivo da resposta"
+                  file={question.respostaArquivo}
+                  onFileSelect={(f) => update({ respostaArquivo: f, respondida: false })}
+                  onRemove={() => update({ respostaArquivo: null, respondida: false })}
+                  disabled={!canEdit}
+                />
+
+                {question.resposta === 'Não' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-800 uppercase tracking-wider">Deficiência (500)</label>
+                      <textarea
+                        maxLength={500}
+                        value={question.deficienciaTexto}
+                        onChange={(e) => update({ deficienciaTexto: e.target.value, respondida: false })}
+                        className="w-full border border-slate-200 rounded-xl p-3 text-sm text-slate-700"
+                        rows={4}
+                        placeholder="Deficiência"
+                        disabled={!canEdit}
+                      />
+                      <FileUpload
+                        label="Arquivo da deficiência"
+                        file={question.deficienciaArquivo}
+                        onFileSelect={(f) => update({ deficienciaArquivo: f, respondida: false })}
+                        onRemove={() => update({ deficienciaArquivo: null, respondida: false })}
+                        disabled={!canEdit}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-800 uppercase tracking-wider">Recomendação (500)</label>
+                      <textarea
+                        maxLength={500}
+                        value={question.recomendacaoTexto}
+                        onChange={(e) => update({ recomendacaoTexto: e.target.value, respondida: false })}
+                        className="w-full border border-slate-200 rounded-xl p-3 text-sm text-slate-700"
+                        rows={4}
+                        placeholder="Recomendação"
                         disabled={!canEdit}
                       />
                     </div>
