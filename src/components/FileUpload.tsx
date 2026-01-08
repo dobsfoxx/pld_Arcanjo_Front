@@ -1,85 +1,183 @@
-import React, { useRef } from 'react';
+import React, { useRef, useId } from 'react';
 import { Upload, X, FileText, CheckCircle } from 'lucide-react';
 
 interface FileUploadProps {
   label: string;
-  file: File | null | undefined;
-  onFileSelect: (file: File) => void;
-  onRemove: () => void;
+  file?: File | null | undefined;
+  files?: File[] | null | undefined;
+  onFileSelect?: (file: File) => void;
+  onFilesSelect?: (files: File[]) => void;
+  onRemove?: () => void;
+  onRemoveAt?: (index: number) => void;
   accept?: string;
   required?: boolean;
   disabled?: boolean;
+  multiple?: boolean;
+  maxFiles?: number;
 }
 
 export const FileUpload: React.FC<FileUploadProps> = ({
   label,
   file,
+  files,
   onFileSelect,
+  onFilesSelect,
   onRemove,
+  onRemoveAt,
   accept = '.pdf,.doc,.docx,.xls,.xlsx,.jpg,.png',
   required = false,
-  disabled = false
+  disabled = false,
+  multiple = false,
+  maxFiles = 5,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
+  const labelId = useId();
+  const selectedFiles = (multiple ? (files ?? []) : (file ? [file] : [])) as File[];
 
   const handleAreaClick = () => {
     if (disabled) return;
     inputRef.current?.click();
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (disabled) return;
-    if (e.target.files && e.target.files[0]) {
-      onFileSelect(e.target.files[0]);
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.key === 'Enter' || e.key === ' ') && !disabled) {
+      e.preventDefault();
+      handleAreaClick();
     }
   };
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (disabled) return;
+    const picked = Array.from(e.target.files ?? []);
+    if (picked.length === 0) return;
+
+    if (multiple) {
+      const current = (files ?? []) as File[];
+      const next = [...current, ...picked].slice(0, maxFiles);
+      onFilesSelect?.(next);
+      // allow picking same file again later
+      e.target.value = '';
+      return;
+    }
+
+    if (picked[0]) {
+      onFileSelect?.(picked[0]);
+      e.target.value = '';
+    }
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
   return (
-    <div className="w-full group">
-      <label className="flex items-center text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-2">
+    <div className="w-full">
+      <label id={labelId} className="flex items-center text-sm font-semibold text-slate-700 mb-2">
         {label} 
-        {required && !file && <span className="text-red-500 ml-1 text-xs">*</span>}
-        {required && file && <CheckCircle className="w-3 h-3 text-emerald-500 ml-1.5" />}
+        {required && selectedFiles.length === 0 && <span className="text-red-600 ml-1" aria-label="obrigatório">*</span>}
+        {required && selectedFiles.length > 0 && <CheckCircle className="w-4 h-4 text-emerald-600 ml-1.5" aria-label="completo" />}
       </label>
       
-      {!file ? (
+      {selectedFiles.length === 0 ? (
         <div 
+          role="button"
+          tabIndex={disabled ? -1 : 0}
           onClick={handleAreaClick}
-          className={`border-1 border-slate-300 rounded-xl p-3 flex items-center justify-center transition-all duration-200 bg-white h-[52px] ${
+          onKeyDown={handleKeyDown}
+          aria-labelledby={labelId}
+          aria-disabled={disabled}
+          className={`border-2  rounded-lg p-4 flex items-center justify-center transition-all duration-150 bg-white min-h-14 ${
             disabled
-              ? 'opacity-60 cursor-not-allowed'
-              : 'cursor-pointer hover:border-blue-400 hover:gap-2 hover:bg-blue-50/30'
+              ? 'opacity-50 cursor-not-allowed border-slate-300'
+              : 'cursor-pointer border-slate-300 hover:border-slate-500 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2'
           }`}
         >
-          <Upload className="h-4 w-4-8 group-hover:text-blue-500 mr-2 transition-colors" />
-          <span className="text-xs font-medium text-slate-500 group-hover:text-blue-600 transition-colors">
-            Selecionar arquivo
+          <Upload className={`h-5 w-5 mr-2 ${disabled ? 'text-slate-400' : 'text-slate-500'}`} aria-hidden="true" />
+          <span className={`text-sm font-medium ${disabled ? 'text-slate-400' : 'text-slate-600'}`}>
+            Clique ou arraste para selecionar
           </span>
           <input 
             type="file" 
             ref={inputRef}
-            className="hidden" 
+            className="sr-only" 
             onChange={handleChange}
             accept={accept}
+            multiple={multiple}
             disabled={disabled}
+            aria-label={label}
           />
         </div>
       ) : (
-        <div className="relative border border-slate-200 rounded-xl p-2 pl-3 flex items-center bg-slate-50/50 hover:bg-white hover:shadow-sm transition-all h-[52px]">
-          <div className="bg-blue-100 p-1.5 rounded-lg shrink-0 mr-3">
-            <FileText className="h-4 w-4 text-blue-600" />
-          </div>
-          <div className="flex-1 min-w-0 mr-2">
-            <p className="text-xs font-semibold text-slate-700 truncate" title={file.name}>{file.name}</p>
-            <p className="text-[10px]-8 font-medium">{(file.size / 1024).toFixed(0)} KB</p>
-          </div>
-          <button 
-            onClick={(e) => { e.stopPropagation(); onRemove(); }}
-            disabled={disabled}
-            className="p-1.5 rounded-lg-8 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <X className="h-4 w-4" />
-          </button>
+        <div className="space-y-2">
+          {multiple && (
+            <div
+              role="button"
+              tabIndex={disabled ? -1 : 0}
+              onClick={selectedFiles.length >= maxFiles ? undefined : handleAreaClick}
+              onKeyDown={handleKeyDown}
+              aria-labelledby={labelId}
+              aria-disabled={disabled || selectedFiles.length >= maxFiles}
+              className={`border-2 rounded-lg p-3 flex items-center justify-center transition-all duration-150 bg-white min-h-12 ${
+                disabled || selectedFiles.length >= maxFiles
+                  ? 'opacity-50 cursor-not-allowed border-slate-300'
+                  : 'cursor-pointer border-slate-300 hover:border-slate-500 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2'
+              }`}
+            >
+              <Upload className={`h-5 w-5 mr-2 ${disabled ? 'text-slate-400' : 'text-slate-500'}`} aria-hidden="true" />
+              <span className={`text-sm font-medium ${disabled ? 'text-slate-400' : 'text-slate-600'}`}>
+                {selectedFiles.length >= maxFiles ? `Limite atingido (máx. ${maxFiles})` : `Adicionar arquivos (${selectedFiles.length}/${maxFiles})`}
+              </span>
+              <input
+                type="file"
+                ref={inputRef}
+                className="sr-only"
+                onChange={handleChange}
+                accept={accept}
+                multiple
+                disabled={disabled || selectedFiles.length >= maxFiles}
+                aria-label={label}
+              />
+            </div>
+          )}
+
+          {selectedFiles.map((f, idx) => (
+            <div key={`${f.name}-${f.size}-${idx}`} className="relative border border-slate-200 rounded-lg p-3 flex items-center bg-white hover:shadow-sm transition-all min-h-14">
+              <div className="bg-slate-100 p-2 rounded-md shrink-0 mr-3">
+                <FileText className="h-5 w-5 text-slate-600" aria-hidden="true" />
+              </div>
+              <div className="flex-1 min-w-0 mr-2">
+                <p className="text-sm font-medium text-slate-900 truncate" title={f.name}>{f.name}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{formatFileSize(f.size)}</p>
+              </div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (multiple) onRemoveAt?.(idx);
+                  else onRemove?.();
+                }}
+                disabled={disabled}
+                aria-label={`Remover arquivo ${f.name}`}
+                className="p-2 rounded-lg text-slate-500 hover:text-red-700 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-red-500"
+              >
+                <X className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </div>
+          ))}
+
+          {!multiple && (
+            <input
+              type="file"
+              ref={inputRef}
+              className="sr-only"
+              onChange={handleChange}
+              accept={accept}
+              disabled={disabled}
+              aria-label={label}
+            />
+          )}
         </div>
       )}
     </div>

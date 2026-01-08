@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { authApi } from '../lib/api';
 import toast from 'react-hot-toast';
 import { Button } from '../components/Button';
+import AppFooter from '../components/AppFooter';
+import AppHeader from '../components/AppHeader';
 
 const ResetPasswordPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -44,45 +46,51 @@ const ResetPasswordPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-md bg-white shadow-sm border border-slate-200/70 rounded-2xl p-8">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 mb-2">Redefinir senha</h1>
-        <p className="text-slate-600 mb-6">
-          Crie uma nova senha para acessar o Sistema Arcanjo PLD.
-        </p>
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      <AppHeader title="Redefinir senha" subtitle="Defina uma nova senha" showUserMenu={false} />
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Nova senha</label>
-            <input
-              type="password"
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
-            />
-          </div>
+      <main className="flex-1 flex items-center justify-center px-4 py-10">
+        <div className="w-full max-w-md bg-white shadow-sm border border-slate-200/70 rounded-lg p-8">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900 mb-2">Redefinir senha</h1>
+          <p className="text-slate-600 mb-6">
+            Crie uma nova senha para acessar o Sistema Arcanjo PLD.
+          </p>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Confirmar nova senha</label>
-            <input
-              type="password"
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              minLength={8}
-            />
-          </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Nova senha</label>
+              <input
+                type="password"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={8}
+              />
+            </div>
 
-          <div className="pt-2">
-            <Button type="submit" fullWidth disabled={loading}>
-              Redefinir senha
-            </Button>
-          </div>
-        </form>
-      </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Confirmar nova senha</label>
+              <input
+                type="password"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={8}
+              />
+            </div>
+
+            <div className="pt-2">
+              <Button type="submit" fullWidth disabled={loading}>
+                Redefinir senha
+              </Button>
+            </div>
+          </form>
+        </div>
+      </main>
+
+      <AppFooter />
     </div>
   );
 };

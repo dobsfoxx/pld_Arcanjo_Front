@@ -17,13 +17,13 @@ export type ActionPlan = {
 export type TestData = {
   status: Teste;
   description: string;
-  requisicao: File | null;
+  requisicao: File[];
   requisicaoRef: string;
-  resposta: File | null;
+  resposta: File[];
   respostaRef: string;
-  amostra: File | null;
+  amostra: File[];
   amostraRef: string;
-  evidencias: File | null;
+  evidencias: File[];
   evidenciasRef: string;
   actionPlan: ActionPlan;
 };
@@ -37,9 +37,9 @@ export type Question = {
   criticidade: Criticidade;
   resposta: Resposta;
   respostaTexto: string;
-  respostaArquivo: File | null;
+  respostaArquivo: File[];
   deficienciaTexto: string;
-  deficienciaArquivo: File | null;
+  deficienciaArquivo: File[];
   recomendacaoTexto: string;
   test: TestData;
 };
@@ -49,7 +49,7 @@ export type Section = {
   item: string;
   customLabel: string;
   hasNorma: boolean;
-  normaFile: File | null;
+  normaFile: File[];
   descricao: string;
   questions: Question[];
 };

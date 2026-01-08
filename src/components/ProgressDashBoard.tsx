@@ -17,23 +17,26 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ progress }
   };
 
   return (
-    <div className="bg-blue-50 border border-blue-100 shadow rounded-2xl p-4 sm:p-6">
+    <div className=" bg-slate-800 border border-slate-700 text-white shadow rounded-2xl p-4 sm:p-6">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 sm:gap-6">
-        {/* Progresso Principal */}
+  
+        
         <div className="flex-1">
+          
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-semibold text-gray-900">Progresso do Formulário</h2>
+            <h2 className="text-lg font-semibold text-white">Progresso do Formulário</h2>
             <span className="text-xl sm:text-2xl font-bold text-primary-700">{progress.progress}%</span>
+          
           </div>
           
-          <div className="w-full bg-white border border-gray-200 rounded-full h-3 mb-2">
+          <div className="w-full bg-white border border-gray-200 rounded-full h-3 mb-2 overflow-hidden">
             <div
               className={`${getProgressColor(progress.progress)} h-3 rounded-full transition-all duration-500 ease-out`}
               style={{ width: `${progress.progress}%` }}
             />
           </div>
           
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-white">
             {progress.progress < 100 
               ? 'Continue preenchendo o formulário' 
               : 'Formulário completo! Pronto para gerar relatório.'}

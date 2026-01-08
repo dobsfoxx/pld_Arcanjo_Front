@@ -7,13 +7,17 @@ export interface FormProgress {
   totalQuestions: number;
 }
 
-export type UserRole = 'ADMIN' | 'USER';
+export type UserRole = 'ADMIN' | 'USER' | 'TRIAL_ADMIN';
 
 export interface User {
   id: string;
   name: string;
   email: string;
   role: UserRole;
+  isTrial?: boolean;
+  trialExpiresAt?: string | null;
+  subscriptionStatus?: string;
+  subscriptionExpiresAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -35,7 +39,7 @@ export const PLD_TOPICS = [
   'Auditoria (AUD)'
 ] as const;
 
-export const PLD_ITEM_OPTIONS = [...PLD_TOPICS, 'Outro (1)', 'Outro (2)'] as const;
+export const PLD_ITEM_OPTIONS = [...PLD_TOPICS, 'Outro'] as const;
 export type PldItemOption = typeof PLD_ITEM_OPTIONS[number];
 
 export type PLDTopicType = typeof PLD_TOPICS[number];

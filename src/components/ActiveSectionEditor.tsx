@@ -1,4 +1,5 @@
 import React from 'react';
+import { AlertTriangle } from 'lucide-react';
 import { FileUpload } from './FileUpload';
 import type { Section } from '../types/types';
 
@@ -9,102 +10,166 @@ export const ActiveSectionEditor: React.FC<{
   canEdit: boolean;
 }> = ({ activeSection, itemOptions, onUpdateSection, canEdit }) => {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">Item avaliado</h2>
-          <p className="text-sm text-slate-500">Defina o item, a norma interna e a descrição.</p>
-        </div>
-        <span className="bg-slate-50 border border-slate-200 text-slate-700 px-3 py-1 rounded-full text-xs font-bold">
-          {activeSection.customLabel || activeSection.item}
-        </span>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-3">
-          <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider">Item Avaliado</label>
-          <select
-            value={activeSection.item}
-            onChange={(e) => onUpdateSection({ item: e.target.value })}
-            className="w-full border border-slate-200 rounded-xl p-3 text-sm text-slate-700"
-            disabled={!canEdit}
-          >
-            {itemOptions.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
-
-          {(activeSection.item === 'Outro (1)' || activeSection.item === 'Outro (2)') && (
-            <input
-              value={activeSection.customLabel}
-              onChange={(e) => onUpdateSection({ customLabel: e.target.value })}
-              className="w-full border border-slate-200 rounded-xl p-3 text-sm text-slate-700"
-              placeholder="Descreva o item personalizado"
-              disabled={!canEdit}
-            />
-          )}
+    <section className="bg-white rounded-lg border border-slate-200 shadow-sm" aria-labelledby="section-editor-title">
+      
+      <div className="p-5 sm:p-6 lg:p-8">
+  
+        <div className="flex items-start justify-between gap-4 mb-6 flex-wrap">
+          
+          <div>
+            <h2 id="section-editor-title" className="text-lg font-bold text-slate-900">Item avaliado</h2>
+            <p className="text-sm text-slate-500 mt-1">
+              Defina o item, a norma interna e a descrição.
+            </p>
+          </div>
+          
+          <span className="px-3 py-1.5 text-sm font-semibold text-slate-700 bg-slate-100 border border-slate-200 rounded-lg">
+            {activeSection.customLabel || activeSection.item}
+          </span>
+        
         </div>
 
-        <div className="space-y-3">
-          <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider">Possui Norma Interna?</label>
-          <div className="bg-slate-50 rounded-xl p-2 inline-flex items-center border border-slate-200">
-            <button
-              type="button"
-              onClick={() => onUpdateSection({ hasNorma: true })}
-              disabled={!canEdit}
-              className={`px-4 py-2 rounded-lg text-sm font-bold ${activeSection.hasNorma ? 'bg-white text-emerald-500 shadow-sm border border-emerald-100' : 'text-slate-500'} disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              Sim
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                onUpdateSection({
-                  hasNorma: false,
-                  normaFile: null,
-                })
-              }
-              disabled={!canEdit}
-              className={`px-4 py-2 rounded-lg text-sm font-bold ${!activeSection.hasNorma ? 'bg-white text-red-700 shadow-sm border border-red-200' : 'text-slate-500'} disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              Não
-            </button>
+      
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+      
+          <div className="space-y-5">
+            <div>
+              <label htmlFor="item-select" className="block text-sm font-semibold text-slate-700 mb-2">
+                Item Avaliado
+              </label>
+              <select
+                id="item-select"
+                value={activeSection.item}
+                onChange={(e) => onUpdateSection({ item: e.target.value })}
+                disabled={!canEdit}
+                className="w-full h-11 px-3 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-50 transition-colors"
+              >
+                {itemOptions.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {(activeSection.item === 'Outro' || activeSection.item === 'Outro (1)' || activeSection.item === 'Outro (2)') && (
+              <div>
+                <label htmlFor="custom-label" className="block text-sm font-semibold text-slate-700 mb-2">
+                  Descrição personalizada
+                </label>
+                <input
+                  id="custom-label"
+                  type="text"
+                  value={activeSection.customLabel}
+                  onChange={(e) => onUpdateSection({ customLabel: e.target.value })}
+                  placeholder="Descreva o item personalizado"
+                  disabled={!canEdit}
+                  className="w-full h-11 px-3 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-50 transition-colors"
+                />
+              </div>
+            )}
           </div>
 
-          {activeSection.hasNorma && (
-            <div className="space-y-3">
+
+          <div className="space-y-5">
+            <fieldset>
+              <legend className="block text-sm font-semibold text-slate-700 mb-3">
+                Possui Norma Interna?
+              </legend>
+              <div className="flex gap-3" role="group">
+                <button
+                  type="button"
+                  onClick={() => onUpdateSection({ hasNorma: true })}
+                  disabled={!canEdit}
+                  aria-pressed={activeSection.hasNorma}
+                  className={`
+                    flex-1 px-4 py-2.5 text-sm font-semibold rounded-lg border-2 transition-colors
+                    ${activeSection.hasNorma
+                      ? 'bg-emerald-700 text-white border-emerald-700'
+                      : 'bg-white text-slate-700 border-slate-300 hover:border-emerald-600 hover:text-emerald-700'
+                    }
+                    disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2
+                  `}
+                >
+                  Sim
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onUpdateSection({
+                      hasNorma: false,
+                      normaFile: [],
+                    })
+                  }
+                  disabled={!canEdit}
+                  aria-pressed={!activeSection.hasNorma}
+                  className={`
+                    flex-1 px-4 py-2.5 text-sm font-semibold rounded-lg border-2 transition-colors
+                    ${!activeSection.hasNorma
+                      ? 'bg-red-700 text-white border-red-700'
+                      : 'bg-white text-slate-700 border-slate-300 hover:border-red-600 hover:text-red-700'
+                    }
+                    disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
+                  `}
+                >
+                  Não
+                </button>
+              </div>
+            </fieldset>
+
+            {activeSection.hasNorma && (
               <FileUpload
                 label="Upload da norma"
-                file={activeSection.normaFile}
-                onFileSelect={(f) => onUpdateSection({ normaFile: f })}
-                onRemove={() => onUpdateSection({ normaFile: null })}
+                multiple
+                maxFiles={5}
+                files={activeSection.normaFile}
+                onFilesSelect={(next) => onUpdateSection({ normaFile: next })}
+                onRemove={() => onUpdateSection({ normaFile: [] })}
+                onRemoveAt={(idx) => {
+                  const copy = [...(activeSection.normaFile ?? [])];
+                  copy.splice(idx, 1);
+                  onUpdateSection({ normaFile: copy });
+                }}
                 disabled={!canEdit}
               />
+            )}
+          </div>
+        </div>
+
+        {/* Description */}
+        <div className="mt-6">
+          <label htmlFor="section-description" className="block text-sm font-semibold text-slate-700 mb-2">
+            Descrição <span className="font-normal text-slate-500">(máx. 600 caracteres)</span>
+          </label>
+          <textarea
+            id="section-description"
+            value={activeSection.descricao}
+            onChange={(e) => onUpdateSection({ descricao: e.target.value })}
+            placeholder="Descreva detalhadamente o item avaliado..."
+            disabled={!canEdit}
+            maxLength={600}
+            rows={4}
+            className="w-full px-3 py-3 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-50 resize-none transition-colors"
+          />
+          <div className="flex justify-between mt-2">
+            <span className="text-xs text-slate-500">Essas informações são visíveis apenas para administradores</span>
+            <span className="text-xs font-medium text-slate-600" aria-live="polite">
+              {activeSection.descricao?.length || 0}/600
+            </span>
+          </div>
+        </div>
+
+        {/* Warning */}
+        {!canEdit && (
+          <div className="mt-6 flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg" role="alert">
+            <AlertTriangle size={20} className="text-amber-600 shrink-0 mt-0.5" aria-hidden="true" />
+            <div>
+              <p className="text-sm font-semibold text-amber-900">Modo somente leitura</p>
+              <p className="text-sm text-amber-700 mt-0.5">Somente administradores podem editar este formulário.</p>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
-
-      <div>
-        <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider">Descrição (600)</label>
-        <textarea
-          maxLength={600}
-          value={activeSection.descricao}
-          onChange={(e) => onUpdateSection({ descricao: e.target.value })}
-          className="w-full border border-slate-200 rounded-xl p-3 text-sm text-slate-700"
-          rows={4}
-          placeholder="Descrição da norma interna"
-          disabled={!canEdit}
-        />
-      </div>
-
-      {!canEdit && (
-        <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2 rounded-xl">
-          Somente ADMIN pode editar/salvar.
-        </div>
-      )}
-    </div>
+    </section>
   );
 };

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { User, PldSection, PldAttachmentCategory } from '../types/pld';
+import type { UpdateMePayload } from '../types/profile';
 
 const rawBase = (import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api').trim();
 const API_BASE_URL = /\/api\/?$/.test(rawBase)
@@ -8,19 +9,48 @@ const API_BASE_URL = /\/api\/?$/.test(rawBase)
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
+function safeGetStoredToken(): string | null {
+  try {
+    const token = window.localStorage.getItem('pld_token')
+    return token && token.trim() ? token : null
+  } catch {
+    return null
+  }
+}
+
+export function setClientAuthToken(token: string | null) {
+  const trimmed = token && token.trim() ? token.trim() : null
+  if (trimmed) {
+    api.defaults.headers.common.Authorization = `Bearer ${trimmed}`
+    return
+  }
+  delete (api.defaults.headers.common as any).Authorization
+}
+
 // Interceptors para logging
 api.interceptors.request.use(
   (config) => {
     // Anexa token JWT, se existir
-    const token = window.localStorage.getItem('pld_token');
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const token = safeGetStoredToken()
+    if (token) {
+      const headers: any = (config.headers ?? {}) as any
+      // Axios 1.x pode usar AxiosHeaders (com .set)
+      if (typeof headers.set === 'function') {
+        headers.set('Authorization', `Bearer ${token}`)
+      } else {
+        headers.Authorization = `Bearer ${token}`
+      }
+      config.headers = headers
     }
+
+    // Garantia extra (alguns callers podem sobrescrever)
+    config.withCredentials = true
 
     console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`);
     return config;
@@ -44,22 +74,38 @@ export const authApi = {
   login: (data: { email: string; password: string }) =>
     api.post<{ token: string; user: User }>('/auth/login', data),
 
-  register: (data: { name: string; email: string; password: string }) =>
+  register: (data: { name: string; email: string; password: string; startTrial?: boolean }) =>
     api.post<{ token: string; user: User }>('/auth/register', data),
 
   me: () => api.get<{ user: User }>('/auth/me'),
+
+  updateMe: (data: UpdateMePayload) => api.patch<{ user: User }>('/auth/me', data),
+
+  google: (data: { credential: string }) =>
+    api.post<{ token: string; user: User }>('/auth/google', data),
 
   forgotPassword: (data: { email: string }) =>
     api.post<{ message: string }>('/auth/forgot-password', data),
 
   resetPassword: (data: { token: string; password: string }) =>
     api.post<{ message: string }>('/auth/reset-password', data),
+
+  logout: () => api.post<{ message: string }>('/auth/logout', {}),
+};
+
+export const billingApi = {
+  me: () => api.get<{ entitlements: any }>('/billing/me'),
+  checkout: () => api.post<{ url?: string }>('/billing/checkout', {}),
+  portal: () => api.post<{ url?: string }>('/billing/portal', {}),
 };
 
 // Relatórios
 export const reportApi = {
   generateMyReport: (type: 'PARTIAL' | 'FULL' = 'FULL', format: 'PDF' | 'DOCX' = 'PDF') =>
     api.get('/report/me', { params: { type, format } }),
+
+  generateMyBuilderFormReport: (formId: string, format: 'PDF' | 'DOCX' = 'PDF') =>
+    api.get(`/report/forms/${formId}`, { params: { format } }),
 
   generateUserReport: (
     userId: string,
@@ -71,12 +117,27 @@ export const reportApi = {
       params: { type, format, topicIds: topicIds?.length ? topicIds.join(',') : undefined },
     }),
 
-  generatePldBuilderReport: (format: 'PDF' | 'DOCX' = 'DOCX') =>
-    api.get<{ report: unknown; url: string }>('/report/pld-builder', { params: { format } }),
+  generatePldBuilderReport: (
+    format: 'PDF' | 'DOCX' = 'DOCX',
+    payload?: {
+      name?: string | null
+      metadata?: {
+        instituicoes?: Array<{ nome?: string; cnpj?: string }>
+        qualificacaoAvaliador?: string
+      } | null
+    }
+  ) =>
+    api.post<{ report: unknown; url: string; downloadUrl?: string | null; signedUrl?: string | null }>(
+      '/report/pld-builder',
+      payload ?? {},
+      { params: { format } }
+    ),
 };
 // Builder PLD (novo)
 export const pldBuilderApi = {
   listSections: () => api.get<{ sections: PldSection[] }>('/pld/sections'),
+
+  resetBuilder: () => api.post('/pld/reset'),
 
   createSection: (data: {
     item: string;
@@ -126,5 +187,59 @@ export const pldBuilderApi = {
 
   deleteAttachment: (attachmentId: string) => api.delete(`/pld/attachments/${attachmentId}`),
 
-  concludeBuilder: () => api.post('/pld/conclude'),
+  concludeBuilder: (data: {
+    name: string
+    sentToEmail?: string | null
+    helpTexts?: { qualificacao?: string; metodologia?: string; recomendacoes?: string; planoAcao?: string } | null
+    metadata?: any
+  }) => 
+    api.post('/pld/conclude', data),
+
+  listConcludedForms: () => 
+    api.get<{ forms: any[] }>('/pld/forms'),
+
+  listMyForms: () => 
+    api.get<{ forms: any[] }>('/pld/my-forms'),
+
+  getConcludedForm: (id: string) => 
+    api.get<{ form: any }>(`/pld/forms/${id}`),
+
+  deleteForm: (formId: string) =>
+    api.delete(`/pld/forms/${formId}`),
+
+  sendFormToUser: (
+    formId: string,
+    email: string,
+    helpTexts?: { qualificacao?: string; metodologia?: string; recomendacoes?: string; planoAcao?: string } | null
+  ) => api.post(`/pld/forms/${formId}/send`, { email, helpTexts: helpTexts ?? null }),
+
+  approveForm: (formId: string) => 
+    api.post(`/pld/forms/${formId}/approve`),
+
+  returnForm: (formId: string, reason?: string) => 
+    api.post(`/pld/forms/${formId}/return`, { reason }),
+
+  getUserForm: (formId: string) => 
+    api.get<{ form: any }>(`/pld/forms/${formId}/user`),
+
+  saveUserFormResponses: (formId: string, data: { answers: any[]; sections?: any[]; metadata?: any }) => 
+    api.post(`/pld/forms/${formId}/responses`, data),
+
+  submitUserFormForReview: (formId: string, data: { answers: any[]; sections?: any[]; metadata?: any }) => 
+    api.post(`/pld/forms/${formId}/submit`, data),
+
+  completeUserForm: (formId: string) =>
+    api.post(`/pld/forms/${formId}/complete`),
+
+  uploadUserFormAttachment: (formId: string, file: File, category: string, options?: { questionId?: string; sectionId?: string; referenceText?: string }) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('category', category);
+    if (options?.questionId) formData.append('questionId', options.questionId);
+    if (options?.sectionId) formData.append('sectionId', options.sectionId);
+    if (options?.referenceText) formData.append('referenceText', options.referenceText);
+    return api.post<{ attachment: any }>(`/pld/forms/${formId}/upload`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };

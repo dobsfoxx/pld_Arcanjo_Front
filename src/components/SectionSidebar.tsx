@@ -1,54 +1,107 @@
 import React from 'react';
-import { LayoutDashboard, Plus } from 'lucide-react';
+import { LayoutDashboard, Plus, Trash2 } from 'lucide-react';
 import type { Section } from '../types/types';
 
 export const SectionSidebar: React.FC<{
   sections: Section[];
   activeId: string;
   onSelect: (id: string) => void;
+  onDelete?: (id: string) => void;
   onAdd: () => void;
   canEdit: boolean;
+  canAdd?: boolean;
   variant?: 'desktop' | 'mobile';
-}> = ({ sections, activeId, onSelect, onAdd, canEdit, variant = 'desktop' }) => {
-  const wrapperClass =
-    variant === 'desktop'
-      ? 'hidden md:block w-72 bg-white border-r border-slate-200 overflow-y-auto h-[calc(100vh-64px)] sticky top-16'
-      : 'block w-72 bg-white overflow-y-auto';
+}> = ({ sections, activeId, onSelect, onDelete, onAdd, canEdit, canAdd, variant = 'desktop' }) => {
+  const isDesktop = variant === 'desktop';
+  const allowAdd = (canAdd ?? canEdit) && canEdit;
 
   return (
-    <aside className={wrapperClass}>
-      <div className="p-4">
-        <div className="flex items-center space-x-2 text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">
-          <LayoutDashboard className="w-4 h-4" />
-          <span>Itens avaliados</span>
+    <aside
+      className={`
+        ${isDesktop ? 'hidden md:flex' : 'flex'}
+        flex-col bg-white border-r border-slate-200
+        ${isDesktop ? 'w-72 h-[calc(100vh-64px)] sticky top-16' : 'w-full'}
+        overflow-hidden shadow-sm overflow-x-hidden
+      `}
+      role="navigation"
+      aria-label="Navegação de itens avaliados"
+    >
+      
+      <div className="p-4 border-b border-slate-200 bg-slate-50">
+        <div className="flex items-center gap-2">
+          <LayoutDashboard size={18} className="text-slate-700" aria-hidden="true" />
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
+            Itens avaliados
+          </span>
         </div>
-        <div className="space-y-2">
+      </div>
+
+      
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-3">
+        <nav className="space-y-1.5" role="list">
           {sections.map((sec) => (
-            <button
-              key={sec.id}
-              type="button"
-              onClick={() => onSelect(sec.id)}
-              className={`w-full text-left px-3 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-between hover:scale-110 ${
-                activeId === sec.id
-                  ? 'bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-100'
-                  : 'text-slate-700   '
-              }`}
-            >
-              <span className="truncate">{sec.customLabel || sec.item}</span>
-              <span className="ml-2 text-xs px-2 py-0.5 rounded-full font-semibold bg-slate-100 text-slate-500">
-                {sec.questions.length}
-              </span>
-            </button>
+            <div key={sec.id} role="listitem" className="w-full flex items-center gap-2 min-w-0">
+              <button
+                type="button"
+                onClick={() => onSelect(sec.id)}
+                aria-current={activeId === sec.id ? 'page' : undefined}
+                aria-label={`${sec.customLabel || sec.item} - ${sec.questions.length} questões`}
+                className={`
+                  flex-1 min-w-0 flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-left transition-colors
+                  ${activeId === sec.id
+                    ? 'bg-slate-800 text-white shadow-sm'
+                    : 'text-slate-700 hover:bg-slate-100 border border-transparent'
+                  }
+                  focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2
+                `}
+              >
+                <span
+                  className={`
+                    text-sm truncate min-w-0
+                    ${activeId === sec.id ? 'font-semibold' : 'font-medium'}
+                  `}
+                >
+                  {sec.customLabel || sec.item}
+                </span>
+                <span
+                  className={`
+                    shrink-0 h-6 min-w-6 flex items-center justify-center text-xs font-bold rounded-full
+                    ${activeId === sec.id
+                      ? 'bg-white text-slate-800'
+                      : 'bg-slate-200 text-slate-700'
+                    }
+                  `}
+                  aria-hidden="true"
+                >
+                  {sec.questions.length}
+                </span>
+              </button>
+
+              {canEdit && onDelete && (
+                <button
+                  type="button"
+                  onClick={() => onDelete(sec.id)}
+                  aria-label={`Apagar item avaliado ${sec.customLabel || sec.item}`}
+                  className="shrink-0 p-1.5 text-slate-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <Trash2 size={18} aria-hidden="true" />
+                </button>
+              )}
+            </div>
           ))}
-        </div>
+        </nav>
+      </div>
+
+      {/* Add button */}
+      <div className="p-4 border-t border-slate-200 bg-slate-50">
         <button
           type="button"
           onClick={onAdd}
-          disabled={!canEdit}
-          className="mt-6 w-full flex items-center justify-center px-4 py-3 border border-slate-300 rounded-xl text-sm font-medium text-slate-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          title={canEdit ? 'Adicionar item' : 'Apenas ADMIN pode editar'}
+          disabled={!allowAdd}
+          aria-label="Adicionar novo item"
+          className="w-full flex items-center justify-center gap-2 py-3 text-sm font-semibold text-slate-700 border-2 border-slate-300 rounded-lg hover:border-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-slate-300 disabled:hover:text-slate-700 disabled:hover:bg-transparent focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
         >
-          <Plus className="h-4 w-4 mr-2" />
+          <Plus size={18} aria-hidden="true" />
           Adicionar item
         </button>
       </div>
