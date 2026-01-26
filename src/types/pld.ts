@@ -85,6 +85,10 @@ export interface PldQuestion {
   recomendacaoTexto?: string | null;
   testStatus?: 'SIM' | 'NAO' | 'NAO_PLANO' | null;
   testDescription?: string | null;
+  requisicaoRef?: string | null;
+  respostaTesteRef?: string | null;
+  amostraRef?: string | null;
+  evidenciasRef?: string | null;
   actionOrigem?: string | null;
   actionResponsavel?: string | null;
   actionDescricao?: string | null;

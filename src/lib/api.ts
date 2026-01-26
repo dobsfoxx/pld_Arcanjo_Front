@@ -213,20 +213,11 @@ export const pldBuilderApi = {
     helpTexts?: { qualificacao?: string; metodologia?: string; recomendacoes?: string; planoAcao?: string } | null
   ) => api.post(`/pld/forms/${formId}/send`, { email, helpTexts: helpTexts ?? null }),
 
-  approveForm: (formId: string) => 
-    api.post(`/pld/forms/${formId}/approve`),
-
-  returnForm: (formId: string, reason?: string) => 
-    api.post(`/pld/forms/${formId}/return`, { reason }),
-
   getUserForm: (formId: string) => 
     api.get<{ form: any }>(`/pld/forms/${formId}/user`),
 
   saveUserFormResponses: (formId: string, data: { answers: any[]; sections?: any[]; metadata?: any }) => 
     api.post(`/pld/forms/${formId}/responses`, data),
-
-  submitUserFormForReview: (formId: string, data: { answers: any[]; sections?: any[]; metadata?: any }) => 
-    api.post(`/pld/forms/${formId}/submit`, data),
 
   completeUserForm: (formId: string) =>
     api.post(`/pld/forms/${formId}/complete`),

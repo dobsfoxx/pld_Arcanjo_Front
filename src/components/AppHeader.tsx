@@ -1,6 +1,8 @@
-import React from 'react'
-import { ShieldCheck } from 'lucide-react'
+import React, { useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { FolderOpen, ShieldCheck } from 'lucide-react'
 import UserMenu from './UserMenu'
+import { useAuth } from '../contexts/useAuth'
 
 type Props = {
   title: string
@@ -11,6 +13,16 @@ type Props = {
 }
 
 export default function AppHeader({ title, subtitle, leading, actions, showUserMenu = true }: Props) {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+
+  const formsPath = useMemo(() => {
+    if (!user) return '/login'
+    const subscriptionActive = (user.subscriptionStatus || '').toUpperCase() === 'ACTIVE'
+    const hasBuilderAccess = user.role === 'ADMIN' || user.role === 'TRIAL_ADMIN' || subscriptionActive
+    return hasBuilderAccess ? '/admin/forms' : '/my-forms'
+  }, [user])
+
   return (
     <header className="sticky top-0 z-30 bg-slate-900 shadow-lg">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
@@ -26,6 +38,17 @@ export default function AppHeader({ title, subtitle, leading, actions, showUserM
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          {user ? (
+            <button
+              type="button"
+              onClick={() => navigate(formsPath)}
+              className="inline-flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+              title="Voltar para formulários"
+            >
+              <FolderOpen size={16} aria-hidden="true" />
+              <span className="hidden sm:inline">Formulários</span>
+            </button>
+          ) : null}
           {actions}
           {showUserMenu ? <UserMenu /> : null}
         </div>

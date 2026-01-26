@@ -18,6 +18,8 @@ export const QuestionCard: React.FC<{
   onDelete: () => void;
   onPersist: () => Promise<boolean>;
   canEdit: boolean;
+  showRecommendations?: boolean;
+  planoAcaoHelpText?: string;
 }> = ({
   question,
   index,
@@ -30,6 +32,8 @@ export const QuestionCard: React.FC<{
   onDelete,
   onPersist,
   canEdit,
+  showRecommendations = true,
+  planoAcaoHelpText,
 }) => {
   void _onChangeSync;
   const [saving, setSaving] = useState(false);
@@ -80,7 +84,6 @@ export const QuestionCard: React.FC<{
     question.aplicavel,
     question.criticidade,
     question.resposta,
-    question.test.actionPlan,
     question.test.amostra,
     question.test.description,
     question.test.evidencias,
@@ -527,12 +530,31 @@ export const QuestionCard: React.FC<{
                   )}
 
                   {question.test.status === 'NAO_PLANO' && (
-                    <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                    <div className="p-4 rounded-lg border border-slate-200">
                       <div className="flex items-center gap-2 mb-2">
-                        <h4 className="text-sm font-bold text-amber-800">Comentários (Plano de Ação)</h4>
+                        <h4 className="text-sm font-bold text-black">Comentários (Plano de Ação)</h4>
                         <button
                           type="button"
-                          onClick={() => toast('Configure as instruções para plano de ação no modal de envio do formulário ao usuário.', { duration: 4000, icon: 'ℹ️' })}
+                          onClick={() =>
+                            toast.custom((t) => (
+                              <div className="max-w-md w-full bg-white border border-slate-200 rounded-lg shadow-lg p-4">
+                                <div className="flex items-start justify-between gap-3">
+                                  <p className="text-sm text-slate-700">
+                                    {planoAcaoHelpText ||
+                                      'Configure as instruções para plano de ação no modal de envio do formulário ao usuário.'}
+                                  </p>
+                                  <button
+                                    type="button"
+                                    onClick={() => toast.dismiss(t.id)}
+                                    className="text-slate-400 hover:text-slate-700"
+                                    aria-label="Fechar"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              </div>
+                            ))
+                          }
                           className="text-amber-600 hover:text-amber-800 transition-colors"
                           title="Informações sobre plano de ação"
                         >
@@ -548,7 +570,7 @@ export const QuestionCard: React.FC<{
                         placeholder="Comentários do plano de ação..."
                         rows={5}
                         maxLength={600}
-                        className="w-full px-3 py-2 text-sm bg-white border border-amber-200 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 disabled:opacity-50 disabled:cursor-not-allowed resize-none transition-colors"
+                        className="w-full px-3 py-2 text-sm bg-white border  rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed resize-none transition-colors"
                       />
                     </div>
                   )}
@@ -639,7 +661,11 @@ export const QuestionCard: React.FC<{
                   </div>
 
                   {question.resposta === 'Não' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-white rounded-lg border border-red-200">
+                    <div
+                      className={`grid grid-cols-1 ${
+                        showRecommendations ? 'md:grid-cols-2' : 'md:grid-cols-1'
+                      } gap-4 p-4 bg-white rounded-lg border border-red-200`}
+                    >
                       <div>
                         <label htmlFor={`deficiencia-${question.id}`} className="flex text-xs font-semibold text-red-700 mb-2 items-center gap-1.5">
                           <AlertCircle size={14} aria-hidden="true" />
@@ -675,21 +701,23 @@ export const QuestionCard: React.FC<{
                           disabled={!canEdit}
                         />
                       </div>
-                      <div>
-                        <label htmlFor={`recomendacao-${question.id}`} className="flex text-xs font-semibold text-amber-700 mb-2 items-center gap-1.5">
-                           Recomendação
-                        </label>
-                        <textarea
-                          id={`recomendacao-${question.id}`}
-                          value={question.recomendacaoTexto}
-                          onChange={(e) => update({ recomendacaoTexto: e.target.value, respondida: false })}
-                          disabled={!canEdit}
-                          placeholder="Descreva a recomendação de melhoria..."
-                          rows={4}
-                          maxLength={500}
-                          className="w-full px-3 py-3 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500 disabled:opacity-50 disabled:cursor-not-allowed resize-none transition-colors"
-                        />
-                      </div>
+                      {showRecommendations && (
+                        <div>
+                          <label htmlFor={`recomendacao-${question.id}`} className="flex text-xs font-semibold text-amber-700 mb-2 items-center gap-1.5">
+                             Recomendação
+                          </label>
+                          <textarea
+                            id={`recomendacao-${question.id}`}
+                            value={question.recomendacaoTexto}
+                            onChange={(e) => update({ recomendacaoTexto: e.target.value, respondida: false })}
+                            disabled={!canEdit}
+                            placeholder="Descreva a recomendação de melhoria..."
+                            rows={4}
+                            maxLength={500}
+                            className="w-full px-3 py-3 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500 disabled:opacity-50 disabled:cursor-not-allowed resize-none transition-colors"
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

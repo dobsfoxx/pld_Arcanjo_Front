@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronDown, User as UserIcon, CreditCard, LogOut } from 'lucide-react'
+import { ChevronDown, User as UserIcon, CreditCard, LogOut, HelpCircle, ShieldCheck } from 'lucide-react'
 import { useAuth } from '../contexts/useAuth'
 
 type Props = {
@@ -14,6 +14,7 @@ export default function UserMenu({ className }: Props) {
 
   const subscriptionActive = (user?.subscriptionStatus || '').toUpperCase() === 'ACTIVE'
   const showUpgrade = !subscriptionActive && user?.role !== 'ADMIN'
+  const showAdminHelp = user?.role === 'ADMIN' || user?.role === 'TRIAL_ADMIN'
 
   const label = useMemo(() => {
     if (!user) return 'Menu'
@@ -76,6 +77,40 @@ export default function UserMenu({ className }: Props) {
                 Fazer upgrade
               </button>
             )}
+
+            <div className="h-px bg-slate-200" />
+
+            <div className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+              Ajuda
+            </div>
+
+            {showAdminHelp && (
+              <button
+                role="menuitem"
+                type="button"
+                onClick={() => {
+                  setOpen(false)
+                  navigate('/help/admin')
+                }}
+                className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+              >
+                <ShieldCheck size={16} aria-hidden="true" />
+                Ajuda do admin
+              </button>
+            )}
+
+            <button
+              role="menuitem"
+              type="button"
+              onClick={() => {
+                setOpen(false)
+                navigate('/help/user')
+              }}
+              className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+            >
+              <HelpCircle size={16} aria-hidden="true" />
+              Ajuda do usuário
+            </button>
 
             <div className="h-px bg-slate-200" />
 

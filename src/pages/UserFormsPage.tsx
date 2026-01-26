@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   FileText, Eye, Loader2, ChevronLeft, ChevronRight, 
-  CheckCircle, Clock, Send, AlertCircle, Download
+  CheckCircle, Clock, Download
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/useAuth';
@@ -16,7 +16,7 @@ interface Form {
   id: string;
   name: string;
   createdAt: string;
-  status: 'SENT_TO_USER' | 'IN_PROGRESS' | 'SENT_FOR_REVIEW' | 'APPROVED' | 'RETURNED' | 'COMPLETED';
+  status: 'SENT_TO_USER' | 'IN_PROGRESS' | 'COMPLETED';
   assignedToEmail: string;
   sentAt: string | null;
   submittedAt: string | null;
@@ -25,27 +25,18 @@ interface Form {
 const STATUS_LABELS: Record<Form['status'], string> = {
   SENT_TO_USER: 'Pendente',
   IN_PROGRESS: 'Em Progresso',
-  SENT_FOR_REVIEW: 'Enviado para Revisão',
-  APPROVED: 'Aprovado',
-  RETURNED: 'Devolvido para Correção',
   COMPLETED: 'Concluído',
 };
 
 const STATUS_COLORS: Record<Form['status'], string> = {
   SENT_TO_USER: 'bg-slate-100 text-slate-700 border-slate-300',
   IN_PROGRESS: 'bg-amber-100 text-amber-700 border-amber-300',
-  SENT_FOR_REVIEW: 'bg-slate-100 text-slate-700 border-slate-300',
-  APPROVED: 'bg-emerald-100 text-emerald-700 border-emerald-300',
-  RETURNED: 'bg-red-100 text-red-700 border-red-300',
   COMPLETED: 'bg-slate-100 text-slate-700 border-slate-300',
 };
 
 const STATUS_ICONS: Record<Form['status'], React.ReactNode> = {
   SENT_TO_USER: <Clock size={14} />,
   IN_PROGRESS: <Clock size={14} />,
-  SENT_FOR_REVIEW: <Send size={14} />,
-  APPROVED: <CheckCircle size={14} />,
-  RETURNED: <AlertCircle size={14} />,
   COMPLETED: <CheckCircle size={14} />,
 };
 
@@ -64,6 +55,24 @@ export default function UserFormsPage() {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     return forms.slice(start, start + ITEMS_PER_PAGE);
   }, [forms, currentPage]);
+
+  const formStats = useMemo(() => {
+    const stats = {
+      total: forms.length,
+      pending: 0,
+      completed: 0,
+    };
+
+    for (const form of forms) {
+      if (form.status === 'SENT_TO_USER' || form.status === 'IN_PROGRESS') {
+        stats.pending += 1;
+        continue;
+      }
+      if (form.status === 'COMPLETED') stats.completed += 1;
+    }
+
+    return stats;
+  }, [forms]);
 
   useEffect(() => {
     loadForms();
@@ -92,13 +101,39 @@ export default function UserFormsPage() {
     navigate(`/forms/${formId}`);
   };
 
-  const handleDownloadReport = async (formId: string) => {
+  const handleDownloadReport = async (formId: string, formName?: string) => {
     try {
+      const downloadBlob = (blob: Blob, filename: string) => {
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+      };
+
+      const safeFilenameBase = (value: string) =>
+        (value || 'relatorio')
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9\-_. ]/gi, '')
+          .replace(/\s+/g, '-')
+          .slice(0, 80) || 'relatorio';
+
       toast.loading('Gerando relatório...', { id: `report-${formId}` });
       const res = await reportApi.generateMyBuilderFormReport(formId, 'PDF');
 
+      const filename = `${safeFilenameBase(formName || `relatorio-${formId}`)}.pdf`;
+
       if (res.data?.signedUrl && /^https?:\/\//i.test(res.data.signedUrl)) {
-        window.open(res.data.signedUrl, '_blank', 'noopener,noreferrer');
+        const fetchRes = await fetch(res.data.signedUrl);
+        if (!fetchRes.ok) {
+          throw new Error(`Falha ao baixar arquivo (${fetchRes.status})`);
+        }
+        const blob = await fetchRes.blob();
+        downloadBlob(blob, filename);
         toast.success('Relatório gerado', { id: `report-${formId}` });
         return;
       }
@@ -119,10 +154,7 @@ export default function UserFormsPage() {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
 
-      const blobUrl = URL.createObjectURL(blobRes.data);
-      const popup = window.open(blobUrl, '_blank', 'noopener,noreferrer');
-      if (!popup) window.location.href = blobUrl;
-      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+      downloadBlob(blobRes.data, filename);
       toast.success('Relatório gerado', { id: `report-${formId}` });
     } catch (error) {
       console.error('Erro ao gerar relatório:', error);
@@ -142,11 +174,11 @@ export default function UserFormsPage() {
   };
 
   const canEdit = (status: Form['status']) => {
-    return status === 'SENT_TO_USER' || status === 'IN_PROGRESS' || status === 'RETURNED';
+    return status === 'SENT_TO_USER' || status === 'IN_PROGRESS';
   };
 
   const canDownloadReport = (status: Form['status']) => {
-    return status === 'COMPLETED' || status === 'APPROVED';
+    return status === 'COMPLETED';
   };
 
   return (
@@ -160,36 +192,30 @@ export default function UserFormsPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-sm">
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Total</p>
-              <p className="text-2xl font-bold text-slate-900">{forms.length}</p>
+              <p className="text-2xl font-bold text-slate-900">{formStats.total}</p>
             </div>
             <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-sm">
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Pendentes</p>
               <p className="text-2xl font-bold text-slate-900">
-                {forms.filter(f => f.status === 'SENT_TO_USER' || f.status === 'IN_PROGRESS').length}
-              </p>
-            </div>
-            <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-sm">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Em Revisão</p>
-              <p className="text-2xl font-bold text-slate-900">
-                {forms.filter(f => f.status === 'SENT_FOR_REVIEW').length}
+                {formStats.pending}
               </p>
             </div>
             <div className="bg-white rounded-lg border border-emerald-200 p-4 shadow-sm">
-              <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Aprovados</p>
+              <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Concluídos</p>
               <p className="text-2xl font-bold text-emerald-700">
-                {forms.filter(f => f.status === 'APPROVED').length}
+                {formStats.completed}
               </p>
             </div>
           </div>
         )}
 
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 bg-white rounded-lg border border-slate-200 shadow-sm">
+          <div className="w-full flex flex-col items-center justify-center py-20 bg-white rounded-lg border border-slate-200 shadow-sm">
             <Loader2 className="h-12 w-12 animate-spin text-slate-700 mb-3" />
             <p className="text-slate-600 font-semibold">Carregando formulários...</p>
           </div>
         ) : forms.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-lg border border-slate-200 shadow-sm">
+          <div className="w-full text-center py-20 bg-white rounded-lg border border-slate-200 shadow-sm">
             <FileText size={64} className="mx-auto mb-4 text-slate-300" />
             <h3 className="text-lg font-bold text-slate-900 mb-2">
               Nenhum formulário atribuído
@@ -248,7 +274,7 @@ export default function UserFormsPage() {
                             {canDownloadReport(form.status) && (
                               <button
                                 type="button"
-                                onClick={() => void handleDownloadReport(form.id)}
+                                onClick={() => void handleDownloadReport(form.id, form.name)}
                                 className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
                                 title="Gerar relatório"
                               >

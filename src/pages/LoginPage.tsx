@@ -38,7 +38,9 @@ const LoginPage: React.FC = () => {
           toast.success('Cadastro realizado com sucesso!');
         }
 
-        if (loggedUser?.role === 'ADMIN' || loggedUser?.role === 'TRIAL_ADMIN') {
+        if (loggedUser?.role === 'ADMIN') {
+          navigate('/admin/forms');
+        } else if (loggedUser?.role === 'TRIAL_ADMIN') {
           navigate('/pld-builder');
         } else {
           navigate('/my-forms');

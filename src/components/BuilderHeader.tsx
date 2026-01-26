@@ -54,27 +54,25 @@ export const BuilderHeader: React.FC<{
 
         
         <nav className="flex items-center gap-2" role="navigation" aria-label="Ações principais">
+          <button
+            type="button"
+            onClick={() => navigate('/admin/forms')}
+            className="inline-flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-slate-700 focus:ring-offset-2 focus:ring-offset-slate-900"
+            aria-label="Ver todos os formulários salvos"
+            title="Formulários"
+          >
+            <FolderOpen size={16} aria-hidden="true" />
+            <span className="hidden lg:inline">Formulários</span>
+          </button>
+
           {canEdit && (
             <>
-              
-              <button
-                type="button"
-                onClick={() => navigate('/admin/forms')}
-                className="hidden md:flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-900 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-slate-700 focus:ring-offset-2 focus:ring-offset-slate-900"
-                  className="hidden md:flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-slate-700 focus:ring-offset-2 focus:ring-offset-slate-900"
-                aria-label="Ver todos os formulários salvos"
-                title="Formulários"
-              >
-                <FolderOpen size={16} aria-hidden="true" />
-                <span className="hidden lg:inline">Formulários</span>
-              </button>
 
               <button
                 type="button"
                 onClick={onGenerateReport}
                 disabled={saving || concluding}
-                className="hidden lg:flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-900 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-slate-700 focus:ring-offset-2 focus:ring-offset-slate-900"
-                  className="hidden lg:flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-slate-700 focus:ring-offset-2 focus:ring-offset-slate-900"
+                className="hidden lg:flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-slate-700 focus:ring-offset-2 focus:ring-offset-slate-900"
                 aria-label="Gerar e baixar relatório"
                 title="Gerar relatório"
               >
@@ -99,8 +97,7 @@ export const BuilderHeader: React.FC<{
                 type="button"
                 onClick={onConcludeReport}
                 disabled={saving || concluding || sending}
-                className="hidden lg:flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-900 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-slate-700 focus:ring-offset-2 focus:ring-offset-slate-900"
-                  className="hidden lg:flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-slate-700 focus:ring-offset-2 focus:ring-offset-slate-900"
+                className="hidden lg:flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-slate-700 focus:ring-offset-2 focus:ring-offset-slate-900"
                 aria-label="Concluir e salvar formulário"
                 title="Concluir"
               >
@@ -113,8 +110,7 @@ export const BuilderHeader: React.FC<{
                 type="button"
                 onClick={onSendForm}
                 disabled={saving || concluding || sending}
-                className="hidden lg:flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-900 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-slate-700 focus:ring-offset-2 focus:ring-offset-slate-900"
-                  className="hidden lg:flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-slate-700 focus:ring-offset-2 focus:ring-offset-slate-900"
+                className="hidden lg:flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-slate-700 focus:ring-offset-2 focus:ring-offset-slate-900"
                 aria-label="Enviar formulário para resposta"
                 title="Enviar"
               >
@@ -132,8 +128,7 @@ export const BuilderHeader: React.FC<{
             onClick={onToggleMobileMenu}
             aria-expanded={mobileMenuOpen}
             aria-label="Abrir menu de navegação"
-            className="md:hidden p-2 text-slate-300 hover:text-white hover:bg-slate-900 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-slate-700 focus:ring-offset-2 focus:ring-offset-slate-900"
-              className="md:hidden p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-slate-700 focus:ring-offset-2 focus:ring-offset-slate-900"
+            className="md:hidden p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-slate-700 focus:ring-offset-2 focus:ring-offset-slate-900"
           >
             <Menu size={24} aria-hidden="true" />
           </button>

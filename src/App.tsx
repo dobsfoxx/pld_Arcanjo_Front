@@ -11,6 +11,8 @@ import AdminFormDetailPage from './pages/AdminFormDetailPage';
 import UserSubmissionsPage from './pages/UserSubmissionsPage';
 import UserFormsPage from './pages/UserFormsPage';
 import NotFoundPage from './pages/NotFoundPage';
+import HelpAdminPage from './pages/HelpAdminPage';
+import HelpUserPage from './pages/HelpUserPage';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthProvider';
 import { useAuth } from './contexts/useAuth';
@@ -104,7 +106,11 @@ const HomeRedirect: React.FC = () => {
   const subscriptionActive = (user.subscriptionStatus || '').toUpperCase() === 'ACTIVE';
 
   // Redirecionar baseado no papel/entitlement
-  if (user.role === 'ADMIN' || user.role === 'TRIAL_ADMIN' || subscriptionActive) {
+  if (user.role === 'ADMIN') {
+    return <Navigate to="/admin/forms" replace />;
+  }
+
+  if (user.role === 'TRIAL_ADMIN' || subscriptionActive) {
     return <Navigate to="/pld-builder" replace />;
   }
   
@@ -143,6 +149,22 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <ProfilePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/help/admin"
+                element={
+                  <ProtectedRoute>
+                    <HelpAdminPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/help/user"
+                element={
+                  <ProtectedRoute>
+                    <HelpUserPage />
                   </ProtectedRoute>
                 }
               />
@@ -206,13 +228,14 @@ function App() {
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
             <Toaster
-              position="top-right"
+              position="top-center"
               toastOptions={{
                 style: {
                   borderRadius: '10px',
                   background: 'fff',
                   color: '#1e293b',
                   fontSize: '14px',
+                  
                   
                 },
               }}

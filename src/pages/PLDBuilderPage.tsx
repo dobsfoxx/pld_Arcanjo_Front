@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { FileText, Plus, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { FileText, Plus, ChevronLeft, ChevronRight, Trash2, HelpCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import { getToastErrorMessage } from '../lib/errors';
@@ -53,6 +53,10 @@ export default function PLDBuilderPage() {
   type ConcludeInstituicao = { id: string; nome: string; cnpj: string };
   const [concludeInstituicoes, setConcludeInstituicoes] = useState<ConcludeInstituicao[]>([]);
   const [concludeQualificacaoAvaliador, setConcludeQualificacaoAvaliador] = useState('');
+  const [concludeMostrarMetodologia, setConcludeMostrarMetodologia] = useState<'MOSTRAR' | 'NAO_MOSTRAR'>('MOSTRAR');
+  const [concludeIncluirRecomendacoes, setConcludeIncluirRecomendacoes] = useState<'INCLUIR' | 'NAO_INCLUIR'>('INCLUIR');
+  const [showMetodologiaPopup, setShowMetodologiaPopup] = useState(false);
+  const [showRecomendacoesPopup, setShowRecomendacoesPopup] = useState(false);
   const [reportFormat, setReportFormat] = useState<'DOCX' | 'PDF'>('DOCX');
   const [editFormName, setEditFormName] = useState<string | null>(null);
   
@@ -680,6 +684,10 @@ export default function PLDBuilderPage() {
               recomendacaoTexto: question.recomendacaoTexto || null,
               testStatus: question.test.status || null,
               testDescription: question.test.description || null,
+              requisicaoRef: question.test.requisicaoRef || null,
+              respostaTesteRef: question.test.respostaRef || null,
+              amostraRef: question.test.amostraRef || null,
+              evidenciasRef: question.test.evidenciasRef || null,
               actionOrigem: question.test.actionPlan.origem || null,
               actionResponsavel: question.test.actionPlan.responsavel || null,
               actionDescricao: question.test.actionPlan.descricao || null,
@@ -1164,8 +1172,8 @@ export default function PLDBuilderPage() {
         metadata: {
           instituicoes: concludeInstituicoes.map((i) => ({ id: i.id, nome: i.nome.trim(), cnpj: i.cnpj })),
           qualificacaoAvaliador: qualif,
-          mostrarMetodologia: 'MOSTRAR',
-          incluirRecomendacoes: 'INCLUIR',
+          mostrarMetodologia: concludeMostrarMetodologia,
+          incluirRecomendacoes: concludeIncluirRecomendacoes,
         },
       });
       setConcludeModalOpen(false);
@@ -1173,6 +1181,8 @@ export default function PLDBuilderPage() {
       setConcludeSentToEmail('');
       setConcludeInstituicoes([]);
       setConcludeQualificacaoAvaliador('');
+      setConcludeMostrarMetodologia('MOSTRAR');
+      setConcludeIncluirRecomendacoes('INCLUIR');
       toast.success('Formulário salvo com sucesso!', { id: 'pld-conclude' });
 
       // Evita carregar um builder em branco (sem modal de instruções).
@@ -1192,6 +1202,18 @@ export default function PLDBuilderPage() {
       return;
     }
     setSendModalOpen(true);
+  };
+
+  const clearAnsweredFlagsForSend = () => {
+    const hasAnswered = sectionsRef.current.some((sec) => sec.questions.some((q) => q.respondida));
+    if (!hasAnswered) return;
+
+    setSectionsAndSyncRef((prev) =>
+      prev.map((sec) => ({
+        ...sec,
+        questions: sec.questions.map((q) => (q.respondida ? { ...q, respondida: false } : q)),
+      }))
+    );
   };
 
   // Confirma envio: salva o form e envia para o email
@@ -1218,6 +1240,15 @@ export default function PLDBuilderPage() {
     setSending(true);
     try {
       toast.loading('Salvando e enviando formulário...', { id: 'pld-send' });
+
+      // Garante que as questões não sejam enviadas como respondidas.
+      clearAnsweredFlagsForSend();
+      const saved = await persistBuilderRef.current({ silent: true, reload: false, setBusy: false });
+      if (!saved) {
+        toast.error('Não foi possível salvar o formulário antes do envio.', { id: 'pld-send' });
+        setSending(false);
+        return;
+      }
       
       // 1. Concluir e salvar o formulário
       const concludeRes = await pldBuilderApi.concludeBuilder({ name, sentToEmail: email, helpTexts });
@@ -1362,6 +1393,115 @@ export default function PLDBuilderPage() {
                           className="w-full px-4 py-3 text-sm bg-white border border-slate-200 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 disabled:opacity-50"
                           disabled={concluding}
                         />
+                      </div>
+
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <label className="text-xs font-bold text-slate-600">Metodologia - Resultado da Avaliação</label>
+                          <button
+                            type="button"
+                            onClick={() => setShowMetodologiaPopup(true)}
+                            className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors"
+                            title="Ver esclarecimentos"
+                          >
+                            <HelpCircle size={14} />
+                          </button>
+                        </div>
+                        <div className="flex gap-3">
+                          <label
+                            className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                              concludeMostrarMetodologia === 'MOSTRAR'
+                                ? 'border-slate-400 bg-slate-100 text-slate-800'
+                                : 'border-slate-200 hover:border-slate-300'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="admin-metodologia"
+                              value="MOSTRAR"
+                              checked={concludeMostrarMetodologia === 'MOSTRAR'}
+                              onChange={() => setConcludeMostrarMetodologia('MOSTRAR')}
+                              className="sr-only"
+                              disabled={concluding}
+                            />
+                            <span className="font-medium">MOSTRAR</span>
+                          </label>
+                          <label
+                            className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                              concludeMostrarMetodologia === 'NAO_MOSTRAR'
+                                ? 'border-amber-500 bg-amber-50 text-amber-700'
+                                : 'border-slate-200 hover:border-slate-300'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="admin-metodologia"
+                              value="NAO_MOSTRAR"
+                              checked={concludeMostrarMetodologia === 'NAO_MOSTRAR'}
+                              onChange={() => setConcludeMostrarMetodologia('NAO_MOSTRAR')}
+                              className="sr-only"
+                              disabled={concluding}
+                            />
+                            <span className="font-medium">NÃO MOSTRAR</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <label className="text-xs font-bold text-slate-600">Recomendações</label>
+                          <button
+                            type="button"
+                            onClick={() => setShowRecomendacoesPopup(true)}
+                            className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors"
+                            title="Ver esclarecimentos"
+                          >
+                            <HelpCircle size={14} />
+                          </button>
+                        </div>
+                        <div className="flex gap-3">
+                          <label
+                            className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                              concludeIncluirRecomendacoes === 'INCLUIR'
+                                ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                                : 'border-slate-200 hover:border-slate-300'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="admin-recomendacoes"
+                              value="INCLUIR"
+                              checked={concludeIncluirRecomendacoes === 'INCLUIR'}
+                              onChange={() => setConcludeIncluirRecomendacoes('INCLUIR')}
+                              className="sr-only"
+                              disabled={concluding}
+                            />
+                            <span className="font-medium">INCLUIR</span>
+                          </label>
+                          <label
+                            className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                              concludeIncluirRecomendacoes === 'NAO_INCLUIR'
+                                ? 'border-amber-500 bg-amber-50 text-amber-700'
+                                : 'border-slate-200 hover:border-slate-300'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="admin-recomendacoes"
+                              value="NAO_INCLUIR"
+                              checked={concludeIncluirRecomendacoes === 'NAO_INCLUIR'}
+                              onChange={() => setConcludeIncluirRecomendacoes('NAO_INCLUIR')}
+                              className="sr-only"
+                              disabled={concluding}
+                            />
+                            <span className="font-medium">NÃO INCLUIR</span>
+                          </label>
+                        </div>
+                        {concludeIncluirRecomendacoes === 'NAO_INCLUIR' && (
+                          <p className="text-xs text-amber-600 mt-2">
+                            O campo "Recomendação" ficará desabilitado nas questões.
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1681,6 +1821,8 @@ export default function PLDBuilderPage() {
                           index={originalIdx}
                           total={total}
                           expanded={expandedQuestions.has(q.id)}
+                          showRecommendations={concludeIncluirRecomendacoes === 'INCLUIR'}
+                          planoAcaoHelpText={helpTexts.planoAcao || defaultHelpTexts.planoAcao}
                           onToggleExpanded={() =>
                             setExpandedQuestions((prev) => {
                               const next = new Set(prev);
@@ -1765,7 +1907,7 @@ export default function PLDBuilderPage() {
                     <button
                       onClick={addQuestion}
                       disabled={!canAddQuestion}
-                      className="w-full py-4 border border-slate-200 rounded-lg flex items-center justify-center text-slate-600 font-semibold hover:bg-white hover:border-blue-600 hover:text-blue-700 transition-colors group bg-slate-50/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full py-4 border bg-white border-slate-200 rounded-lg flex items-center justify-center text-slate-600 font-semibold hover:bg-white hover:border-blue-600 hover:text-blue-700 transition-colors group bg-slate-50/50 disabled:opacity-50 disabled:cursor-not-allowed"
                       title={
                         canAddQuestion
                           ? 'Adicionar nova questão'
@@ -1812,7 +1954,48 @@ export default function PLDBuilderPage() {
         </>
       )}
 
+      {showMetodologiaPopup && (
+        <SimplePopup title="Metodologia" onClose={() => setShowMetodologiaPopup(false)}>
+          <p className="whitespace-pre-wrap text-sm text-slate-700">
+            {helpTexts.metodologia || defaultHelpTexts.metodologia}
+          </p>
+        </SimplePopup>
+      )}
+      {showRecomendacoesPopup && (
+        <SimplePopup title="Recomendações" onClose={() => setShowRecomendacoesPopup(false)}>
+          <p className="whitespace-pre-wrap text-sm text-slate-700">
+            {helpTexts.recomendacoes || defaultHelpTexts.recomendacoes}
+          </p>
+        </SimplePopup>
+      )}
+
       <AppFooter />
+    </div>
+  );
+}
+
+type SimplePopupProps = {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+};
+
+function SimplePopup({ title, onClose, children }: SimplePopupProps) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-lg shadow-xl border border-slate-200 max-w-lg w-full overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+          <h3 className="text-lg font-bold text-slate-900">{title}</h3>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-slate-100 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
+          >
+            <span className="sr-only">Fechar</span>
+            ✕
+          </button>
+        </div>
+        <div className="px-6 py-4">{children}</div>
+      </div>
     </div>
   );
 }

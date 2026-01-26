@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  FileText, Send, Eye, CheckCircle, XCircle, Mail, Plus, 
+  FileText, Send, Eye, Mail, Plus, 
   Loader2, Trash2, ChevronLeft, ChevronRight, Edit, Download
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -17,7 +17,7 @@ interface Form {
   name: string;
   createdAt: string;
   sentToEmail: string | null;
-  status: 'DRAFT' | 'SENT_TO_USER' | 'IN_PROGRESS' | 'SENT_FOR_REVIEW' | 'APPROVED' | 'RETURNED' | 'COMPLETED';
+  status: 'DRAFT' | 'SENT_TO_USER' | 'IN_PROGRESS' | 'COMPLETED';
   assignedToEmail: string | null;
   sentAt: string | null;
   submittedAt: string | null;
@@ -34,9 +34,6 @@ const STATUS_LABELS: Record<Form['status'], string> = {
   DRAFT: 'Rascunho',
   SENT_TO_USER: 'Enviado ao Usuário',
   IN_PROGRESS: 'Em Progresso',
-  SENT_FOR_REVIEW: 'Aguardando Revisão',
-  APPROVED: 'Aprovado',
-  RETURNED: 'Devolvido',
   COMPLETED: 'Concluído',
 };
 
@@ -44,9 +41,6 @@ const STATUS_COLORS: Record<Form['status'], string> = {
   DRAFT: 'bg-slate-100 text-slate-700 border-slate-300',
   SENT_TO_USER: 'bg-slate-100 text-slate-700 border-slate-300',
   IN_PROGRESS: 'bg-amber-100 text-amber-700 border-amber-300',
-  SENT_FOR_REVIEW: 'bg-slate-100 text-slate-700 border-slate-300',
-  APPROVED: 'bg-emerald-100 text-emerald-700 border-emerald-300',
-  RETURNED: 'bg-red-100 text-red-700 border-red-300',
   COMPLETED: 'bg-slate-100 text-slate-700 border-slate-300',
 };
 
@@ -84,6 +78,22 @@ export default function AdminFormsPage() {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     return forms.slice(start, start + ITEMS_PER_PAGE);
   }, [forms, currentPage]);
+
+  const formStats = useMemo(() => {
+    const stats = {
+      draft: 0,
+      pending: 0,
+      completed: 0,
+    };
+
+    for (const form of forms) {
+      if (form.status === 'DRAFT') stats.draft += 1;
+      if (form.status === 'IN_PROGRESS' || form.status === 'SENT_TO_USER') stats.pending += 1;
+      if (form.status === 'COMPLETED') stats.completed += 1;
+    }
+
+    return stats;
+  }, [forms]);
 
   useEffect(() => {
     const subscriptionActive = (user?.subscriptionStatus || '').toUpperCase() === 'ACTIVE';
@@ -179,7 +189,6 @@ export default function AdminFormsPage() {
 
     setSendingFormId(selectedFormId);
     try {
-      await pldBuilderApi.sendFormToUser(selectedFormId, emailToSend.trim());
       await pldBuilderApi.sendFormToUser(selectedFormId, emailToSend.trim(), helpTexts);
       toast.success('Formulário enviado com sucesso!');
       setEmailModalOpen(false);
@@ -194,40 +203,40 @@ export default function AdminFormsPage() {
     }
   };
 
-  const handleApproveForm = async (formId: string) => {
-    if (!confirm('Deseja aprovar este formulário?')) return;
 
+  const handleDownloadReport = async (formId: string, formName?: string) => {
     try {
-      await pldBuilderApi.approveForm(formId);
-      toast.success('Formulário aprovado!');
-      loadForms();
-    } catch (error: unknown) {
-      console.error('Erro ao aprovar formulário:', error);
-      toast.error(getToastErrorMessage(error, 'Erro ao aprovar formulário'));
-    }
-  };
+      const downloadBlob = (blob: Blob, filename: string) => {
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+      };
 
-  const handleReturnForm = async (formId: string) => {
-    const reason = prompt('Motivo da devolução (opcional):');
-    if (reason === null) return;
+      const safeFilenameBase = (value: string) =>
+        (value || 'relatorio')
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9\-_. ]/gi, '')
+          .replace(/\s+/g, '-')
+          .slice(0, 80) || 'relatorio';
 
-    try {
-      await pldBuilderApi.returnForm(formId, reason || undefined);
-      toast.success('Formulário devolvido ao usuário!');
-      loadForms();
-    } catch (error: unknown) {
-      console.error('Erro ao devolver formulário:', error);
-      toast.error(getToastErrorMessage(error, 'Erro ao devolver formulário'));
-    }
-  };
-
-  const handleDownloadReport = async (formId: string) => {
-    try {
       toast.loading('Gerando relatório...', { id: `report-${formId}` });
       const res = await reportApi.generateMyBuilderFormReport(formId, 'PDF');
 
+      const filename = `${safeFilenameBase(formName || `relatorio-${formId}`)}.pdf`;
+
       if (res.data?.signedUrl && /^https?:\/\//i.test(res.data.signedUrl)) {
-        window.open(res.data.signedUrl, '_blank', 'noopener,noreferrer');
+        const fetchRes = await fetch(res.data.signedUrl);
+        if (!fetchRes.ok) {
+          throw new Error(`Falha ao baixar arquivo (${fetchRes.status})`);
+        }
+        const blob = await fetchRes.blob();
+        downloadBlob(blob, filename);
         toast.success('Relatório gerado', { id: `report-${formId}` });
         return;
       }
@@ -248,10 +257,7 @@ export default function AdminFormsPage() {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
 
-      const blobUrl = URL.createObjectURL(blobRes.data);
-      const popup = window.open(blobUrl, '_blank', 'noopener,noreferrer');
-      if (!popup) window.location.href = blobUrl;
-      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+      downloadBlob(blobRes.data, filename);
       toast.success('Relatório gerado', { id: `report-${formId}` });
     } catch (error) {
       console.error('Erro ao gerar relatório:', error);
@@ -259,9 +265,7 @@ export default function AdminFormsPage() {
     }
   };
 
-  const canDownloadReport = (status: Form['status']) => {
-    return status === 'COMPLETED' || status === 'APPROVED';
-  };
+  const canDownloadReport = (status: Form['status']) => status === 'COMPLETED';
 
 
   const formatDate = (dateString: string | null) => {
@@ -302,17 +306,17 @@ export default function AdminFormsPage() {
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Total</p>
               <p className="text-2xl font-bold text-slate-900">{forms.length}</p>
             </div>
-            <div className="bg-white rounded-lg border border-emerald-200 p-4 shadow-sm">
-              <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Aprovados</p>
-              <p className="text-2xl font-bold text-emerald-700">{forms.filter(f => f.status === 'APPROVED').length}</p>
-            </div>
             <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-sm">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Aguardando Revisão</p>
-              <p className="text-2xl font-bold text-slate-900">{forms.filter(f => f.status === 'SENT_FOR_REVIEW').length}</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Rascunhos</p>
+              <p className="text-2xl font-bold text-slate-900">{formStats.draft}</p>
             </div>
             <div className="bg-white rounded-lg border border-amber-200 p-4 shadow-sm">
-              <p className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1">Em Progresso</p>
-              <p className="text-2xl font-bold text-amber-700">{forms.filter(f => f.status === 'IN_PROGRESS' || f.status === 'SENT_TO_USER').length}</p>
+              <p className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1">Em andamento</p>
+              <p className="text-2xl font-bold text-amber-700">{formStats.pending}</p>
+            </div>
+            <div className="bg-white rounded-lg border border-emerald-200 p-4 shadow-sm">
+              <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Concluídos</p>
+              <p className="text-2xl font-bold text-emerald-700">{formStats.completed}</p>
             </div>
           </div>
         )}
@@ -411,7 +415,7 @@ export default function AdminFormsPage() {
                             {canDownloadReport(form.status) && (
                               <button
                                 type="button"
-                                onClick={() => void handleDownloadReport(form.id)}
+                                onClick={() => void handleDownloadReport(form.id, form.name)}
                                 className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
                                 title="Gerar relatório"
                               >
@@ -419,7 +423,7 @@ export default function AdminFormsPage() {
                               </button>
                             )}
 
-                            {(form.status === 'DRAFT' || form.status === 'RETURNED' || form.status === 'COMPLETED') && (
+                            {(form.status === 'DRAFT' || form.status === 'COMPLETED') && (
                               <button
                                 type="button"
                                 onClick={() => handleSendToUser(form.id)}
@@ -435,37 +439,14 @@ export default function AdminFormsPage() {
                               </button>
                             )}
 
-                            {(form.status !== 'SENT_FOR_REVIEW' && form.status !== 'APPROVED') && (
-                              <button
-                                type="button"
-                                onClick={() => handleViewForm(form.id)}
-                                className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-                                title="Editar"
-                              >
-                                <Edit size={18} />
-                              </button>
-                            )}
-
-                            {form.status === 'SENT_FOR_REVIEW' && (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => handleApproveForm(form.id)}
-                                  className="p-2 text-slate-500 hover:text-emerald-600 hover:bg-emerald-100 rounded-lg transition-colors"
-                                  title="Aprovar"
-                                >
-                                  <CheckCircle size={18} />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleReturnForm(form.id)}
-                                  className="p-2 text-slate-500 hover:text-amber-600 hover:bg-amber-100 rounded-lg transition-colors"
-                                  title="Devolver para Correção"
-                                >
-                                  <XCircle size={18} />
-                                </button>
-                              </>
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleViewForm(form.id)}
+                              className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                              title="Editar"
+                            >
+                              <Edit size={18} />
+                            </button>
 
                             <button
                               type="button"

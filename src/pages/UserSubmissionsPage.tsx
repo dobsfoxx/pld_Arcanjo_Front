@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   FileText, Save, ArrowLeft, AlertTriangle, Loader2, 
@@ -59,6 +59,7 @@ type MetadataModalProps = {
   metadataConfigured: boolean;
   canContinue: boolean;
   errors: MetadataErrors;
+  recommendationsLocked: boolean;
   onClose: () => void;
   onContinue: () => void;
   addInstituicao: () => void;
@@ -76,6 +77,7 @@ function MetadataModal({
   metadataConfigured,
   canContinue,
   errors,
+  recommendationsLocked,
   onClose,
   onContinue,
   addInstituicao,
@@ -298,47 +300,56 @@ function MetadataModal({
                 <HelpCircle size={16} />
               </button>
             </div>
-            <div className="flex gap-3">
-              <label
-                className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all ${
-                  formMetadata.incluirRecomendacoes === 'INCLUIR'
-                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="recomendacoes"
-                  value="INCLUIR"
-                  checked={formMetadata.incluirRecomendacoes === 'INCLUIR'}
-                  onChange={() => setFormMetadata((prev) => ({ ...prev, incluirRecomendacoes: 'INCLUIR' }))}
-                  className="sr-only"
-                />
-                <span className="font-medium">INCLUIR</span>
-              </label>
-              <label
-                className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all ${
-                  formMetadata.incluirRecomendacoes === 'NAO_INCLUIR'
-                    ? 'border-amber-500 bg-amber-50 text-amber-700'
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="recomendacoes"
-                  value="NAO_INCLUIR"
-                  checked={formMetadata.incluirRecomendacoes === 'NAO_INCLUIR'}
-                  onChange={() => setFormMetadata((prev) => ({ ...prev, incluirRecomendacoes: 'NAO_INCLUIR' }))}
-                  className="sr-only"
-                />
-                <span className="font-medium">NÃO INCLUIR</span>
-              </label>
-            </div>
-            {formMetadata.incluirRecomendacoes === 'NAO_INCLUIR' && (
-              <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+            {recommendationsLocked ? (
+              <p className="text-xs text-amber-600 flex items-center gap-1">
                 <AlertTriangle size={12} />
-                O campo "Recomendação" será desabilitado nas questões
+                O campo "Recomendação" foi desabilitado pelo administrador.
               </p>
+            ) : (
+              <>
+                <div className="flex gap-3">
+                  <label
+                    className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                      formMetadata.incluirRecomendacoes === 'INCLUIR'
+                        ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="recomendacoes"
+                      value="INCLUIR"
+                      checked={formMetadata.incluirRecomendacoes === 'INCLUIR'}
+                      onChange={() => setFormMetadata((prev) => ({ ...prev, incluirRecomendacoes: 'INCLUIR' }))}
+                      className="sr-only"
+                    />
+                    <span className="font-medium">INCLUIR</span>
+                  </label>
+                  <label
+                    className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                      formMetadata.incluirRecomendacoes === 'NAO_INCLUIR'
+                        ? 'border-amber-500 bg-amber-50 text-amber-700'
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="recomendacoes"
+                      value="NAO_INCLUIR"
+                      checked={formMetadata.incluirRecomendacoes === 'NAO_INCLUIR'}
+                      onChange={() => setFormMetadata((prev) => ({ ...prev, incluirRecomendacoes: 'NAO_INCLUIR' }))}
+                      className="sr-only"
+                    />
+                    <span className="font-medium">NÃO INCLUIR</span>
+                  </label>
+                </div>
+                {formMetadata.incluirRecomendacoes === 'NAO_INCLUIR' && (
+                  <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                    <AlertTriangle size={12} />
+                    O campo "Recomendação" será desabilitado nas questões
+                  </p>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -620,12 +631,15 @@ export default function UserSubmissionsPage() {
   
   const [questionResponses, setQuestionResponses] = useState<Map<string, UserQuestionResponse>>(new Map());
   const [sectionResponses, setSectionResponses] = useState<Map<string, UserSectionResponse>>(new Map());
+  const [touchedQuestions, setTouchedQuestions] = useState<Set<string>>(new Set());
+  const [userHasSaved, setUserHasSaved] = useState(false);
   const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set());
   const [activeSectionId, setActiveSectionId] = useState<string>('');
   const [questionFilter, setQuestionFilter] = useState<'ALL' | 'PENDING' | 'ANSWERED' | 'NA'>('ALL');
   
   // Estados para metadados do formulário
   const [formMetadata, setFormMetadata] = useState<FormMetadata>(defaultFormMetadata);
+  const [recommendationsLocked, setRecommendationsLocked] = useState(false);
   const [showMetadataModal, setShowMetadataModal] = useState(false);
   const [showQualificacaoPopup, setShowQualificacaoPopup] = useState(false);
   const [showMetodologiaPopup, setShowMetodologiaPopup] = useState(false);
@@ -667,6 +681,16 @@ export default function UserSubmissionsPage() {
   };
 
   const metadataValidation = useMemo(() => validateMetadata(formMetadata), [formMetadata]);
+
+  const isQuestionAnswered = useCallback(
+    (question: Question, qResponse?: UserQuestionResponse) => {
+      if (!qResponse) return false;
+      if (!qResponse.resposta) return false;
+      if (userHasSaved) return true;
+      return touchedQuestions.has(question.id);
+    },
+    [touchedQuestions, userHasSaved]
+  );
 
   // Funções para gerenciar instituições
   const addInstituicao = () => {
@@ -718,19 +742,25 @@ export default function UserSubmissionsPage() {
       const res = await pldBuilderApi.getUserForm(id!);
       const formData = res.data.form;
       setForm(formData);
+      setUserHasSaved(formData?.status && formData.status !== 'SENT_TO_USER');
+      setTouchedQuestions(new Set());
 
       // Carregar metadados salvos
       if (formData.metadata) {
+        const locked = formData.metadata.incluirRecomendacoes === 'NAO_INCLUIR';
+        setRecommendationsLocked(locked);
         setFormMetadata({
           instituicoes: formData.metadata.instituicoes || [],
           qualificacaoAvaliador: formData.metadata.qualificacaoAvaliador || '',
           mostrarMetodologia: formData.metadata.mostrarMetodologia || 'MOSTRAR',
-          incluirRecomendacoes: formData.metadata.incluirRecomendacoes || 'INCLUIR',
+          incluirRecomendacoes: locked ? 'NAO_INCLUIR' : (formData.metadata.incluirRecomendacoes || 'INCLUIR'),
         });
         // Se já tem metadados, não precisa mostrar o modal
         if (formData.metadata.instituicoes?.length > 0 || formData.metadata.qualificacaoAvaliador) {
           setMetadataConfigured(true);
         }
+      } else {
+        setRecommendationsLocked(false);
       }
 
       // Set first section as active
@@ -803,6 +833,11 @@ export default function UserSubmissionsPage() {
       const current = newMap.get(questionId) || { ...defaultQuestionResponse };
       newMap.set(questionId, { ...current, [field]: value });
       return newMap;
+    });
+    setTouchedQuestions((prev) => {
+      const next = new Set(prev);
+      next.add(questionId);
+      return next;
     });
   };
 
@@ -954,10 +989,33 @@ export default function UserSubmissionsPage() {
 
       await pldBuilderApi.saveUserFormResponses(id!, { answers, sections, metadata: formMetadata });
       await loadForm({ silent: true, preserveActiveSection: true });
+      setUserHasSaved(true);
+      setTouchedQuestions(new Set());
       toast.success('Respostas salvas com sucesso!');
     } catch (error: unknown) {
       console.error('Erro ao salvar respostas:', error);
       toast.error(getToastErrorMessage(error, 'Erro ao salvar respostas'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleMetadataContinue = async () => {
+    if (!metadataValidation.canContinue) {
+      toast.error('Preencha os campos obrigatórios para continuar.');
+      return;
+    }
+
+    if (!id) return;
+    setSaving(true);
+    try {
+      await pldBuilderApi.saveUserFormResponses(id, { answers: [], sections: [], metadata: formMetadata });
+      setMetadataConfigured(true);
+      setShowMetadataModal(false);
+      toast.success('Informações do formulário salvas.');
+    } catch (error: unknown) {
+      console.error('Erro ao salvar metadados:', error);
+      toast.error(getToastErrorMessage(error, 'Erro ao salvar informações do formulário'));
     } finally {
       setSaving(false);
     }
@@ -1004,13 +1062,42 @@ export default function UserSubmissionsPage() {
       }));
 
       await pldBuilderApi.saveUserFormResponses(id!, { answers, sections, metadata: formMetadata });
+      setUserHasSaved(true);
+      setTouchedQuestions(new Set());
+
+      const downloadBlob = (blob: Blob, filename: string) => {
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+      };
+
+      const safeFilenameBase = (value: string) =>
+        (value || 'relatorio')
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9\-_. ]/gi, '')
+          .replace(/\s+/g, '-')
+          .slice(0, 80) || 'relatorio';
 
       toast.loading('Gerando relatório...', { id: 'user-report' });
       const res = await reportApi.generateMyBuilderFormReport(id!, reportFormat === 'DOCX' ? 'DOCX' : 'PDF');
 
+      const ext = reportFormat === 'DOCX' ? 'docx' : 'pdf';
+      const filename = `${safeFilenameBase(form?.name || `relatorio-${id}`)}.${ext}`;
+
       // Prefer signedUrl
       if (res.data?.signedUrl && /^https?:\/\//i.test(res.data.signedUrl)) {
-        window.open(res.data.signedUrl, '_blank', 'noopener,noreferrer');
+        const fetchRes = await fetch(res.data.signedUrl);
+        if (!fetchRes.ok) {
+          throw new Error(`Falha ao baixar arquivo (${fetchRes.status})`);
+        }
+        const blob = await fetchRes.blob();
+        downloadBlob(blob, filename);
         toast.success('Relatório gerado', { id: 'user-report' });
         return;
       }
@@ -1031,10 +1118,7 @@ export default function UserSubmissionsPage() {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
 
-      const blobUrl = URL.createObjectURL(blobRes.data);
-      const popup = window.open(blobUrl, '_blank', 'noopener,noreferrer');
-      if (!popup) window.location.href = blobUrl;
-      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+      downloadBlob(blobRes.data, filename);
       toast.success('Relatório gerado', { id: 'user-report' });
     } catch (error: unknown) {
       console.error('Erro ao gerar relatório', error);
@@ -1083,6 +1167,8 @@ export default function UserSubmissionsPage() {
       }));
 
       await pldBuilderApi.saveUserFormResponses(id!, { answers, sections, metadata: formMetadata });
+      setUserHasSaved(true);
+      setTouchedQuestions(new Set());
       await pldBuilderApi.completeUserForm(id!);
       await loadForm({ silent: true, preserveActiveSection: true });
       toast.success('Formulário concluído com sucesso!');
@@ -1096,7 +1182,7 @@ export default function UserSubmissionsPage() {
 
   
 
-  const canEdit = form?.status === 'SENT_TO_USER' || form?.status === 'RETURNED' || form?.status === 'IN_PROGRESS';
+  const canEdit = form?.status === 'SENT_TO_USER' || form?.status === 'IN_PROGRESS';
 
   const activeSection = useMemo(() => {
     return form?.sections.find(s => s.id === activeSectionId) || form?.sections[0];
@@ -1118,7 +1204,7 @@ export default function UserSubmissionsPage() {
         section.questions.forEach((q) => {
           const qResponse = questionResponses.get(q.id);
           const isApplicable = qResponse?.aplicavel ?? q.aplicavel;
-          const isAnswered = Boolean(qResponse?.resposta || q.respondida);
+          const isAnswered = isQuestionAnswered(q, qResponse);
 
           acc.totalQuestions += 1;
           if (isApplicable) {
@@ -1152,7 +1238,7 @@ export default function UserSubmissionsPage() {
     all.forEach((q) => {
       const qResponse = questionResponses.get(q.id);
       const isApplicable = qResponse?.aplicavel ?? q.aplicavel;
-      const isAnswered = Boolean(qResponse?.resposta || q.respondida);
+      const isAnswered = isQuestionAnswered(q, qResponse);
 
       if (!isApplicable) {
         stats.notApplicable += 1;
@@ -1172,14 +1258,14 @@ export default function UserSubmissionsPage() {
         return all.filter((q) => {
           const qResponse = questionResponses.get(q.id);
           const isApplicable = qResponse?.aplicavel ?? q.aplicavel;
-          const isAnswered = Boolean(qResponse?.resposta || q.respondida);
+          const isAnswered = isQuestionAnswered(q, qResponse);
           return isApplicable && !isAnswered;
         });
       case 'ANSWERED':
         return all.filter((q) => {
           const qResponse = questionResponses.get(q.id);
           const isApplicable = qResponse?.aplicavel ?? q.aplicavel;
-          const isAnswered = Boolean(qResponse?.resposta || q.respondida);
+          const isAnswered = isQuestionAnswered(q, qResponse);
           return isApplicable && isAnswered;
         });
       case 'NA':
@@ -1244,15 +1330,9 @@ export default function UserSubmissionsPage() {
           metadataConfigured={metadataConfigured}
           canContinue={metadataValidation.canContinue}
           errors={metadataValidation.errors}
+          recommendationsLocked={recommendationsLocked}
           onClose={() => setShowMetadataModal(false)}
-          onContinue={() => {
-            if (!metadataValidation.canContinue) {
-              toast.error('Preencha os campos obrigatórios para continuar.');
-              return;
-            }
-            setMetadataConfigured(true);
-            setShowMetadataModal(false);
-          }}
+          onContinue={handleMetadataContinue}
           addInstituicao={addInstituicao}
           updateInstituicao={updateInstituicao}
           removeInstituicao={removeInstituicao}
@@ -1281,8 +1361,18 @@ export default function UserSubmissionsPage() {
 
       <AppHeader
         title={form?.name ?? 'Formulário'}
-        subtitle={`Status: ${form.status === 'SENT_TO_USER' ? 'Pendente' : form.status === 'IN_PROGRESS' ? 'Em Progresso' : form.status}${
-          formMetadata.instituicoes.length > 0 ? ` • ${formMetadata.instituicoes.length} instituição(ões)` : ''
+        subtitle={`Status: ${
+          form.status === 'SENT_TO_USER'
+            ? 'Pendente'
+            : form.status === 'IN_PROGRESS'
+              ? 'Em Progresso'
+              : form.status === 'COMPLETED'
+                ? 'Concluído'
+                : form.status
+        }${
+          formMetadata.instituicoes.length > 0
+            ? ` • ${formMetadata.instituicoes.length} instituição(ões)`
+            : ''
         }`}
         leading={
           <button
@@ -1562,6 +1652,7 @@ export default function UserSubmissionsPage() {
 
                 {filteredQuestions.map((question) => {
                   const qResponse = questionResponses.get(question.id) || { ...defaultQuestionResponse };
+                  const isAnswered = isQuestionAnswered(question, qResponse);
                   const isExpanded = expandedQuestions.has(question.id);
                   const originalIdx = questionIndexById.get(question.id) ?? 0;
                   
@@ -1572,7 +1663,7 @@ export default function UserSubmissionsPage() {
                         bg-white rounded-2xl border-2 transition-all
                         ${!qResponse.aplicavel 
                           ? 'border-slate-300 bg-slate-50/50'
-                          : question.respondida || qResponse.resposta
+                          : isAnswered
                             ? 'border-emerald-300 bg-emerald-50/30'
                             : 'border-slate-200'
                         }
@@ -1600,7 +1691,7 @@ export default function UserSubmissionsPage() {
                                   Capitulação: {question.capitulacao}
                                 </span>
                               )}
-                              {qResponse.aplicavel && (question.respondida || qResponse.resposta) && (
+                              {qResponse.aplicavel && isAnswered && (
                                 <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-emerald-600 text-white">
                                   RESPONDIDA
                                 </span>
