@@ -1,12 +1,21 @@
+/**
+ * Configuração da API - Cliente HTTP Axios
+ * 
+ * Este módulo configura o cliente Axios com interceptors para autenticação,
+ * logging e tratamento de erros. Também exporta funções específicas para
+ * cada endpoint da API do backend.
+ */
 import axios from 'axios';
 import type { User, PldSection, PldAttachmentCategory } from '../types/pld';
 import type { UpdateMePayload } from '../types/profile';
 
+// Configuração da URL base da API
 const rawBase = (import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api').trim();
 const API_BASE_URL = /\/api\/?$/.test(rawBase)
   ? rawBase.replace(/\/+$/, '')
   : `${rawBase.replace(/\/+$/, '')}/api`;
 
+// Instância principal do Axios configurada
 export const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
@@ -15,6 +24,9 @@ export const api = axios.create({
   },
 });
 
+/**
+ * Recupera o token JWT armazenado no localStorage de forma segura
+ */
 function safeGetStoredToken(): string | null {
   try {
     const token = window.localStorage.getItem('pld_token')
@@ -24,6 +36,9 @@ function safeGetStoredToken(): string | null {
   }
 }
 
+/**
+ * Define ou remove o token de autenticação no cabeçalho das requisições
+ */
 export function setClientAuthToken(token: string | null) {
   const trimmed = token && token.trim() ? token.trim() : null
   if (trimmed) {
@@ -33,14 +48,13 @@ export function setClientAuthToken(token: string | null) {
   delete (api.defaults.headers.common as any).Authorization
 }
 
-// Interceptors para logging
+// Interceptor de requisição - adiciona token JWT e faz logging
 api.interceptors.request.use(
   (config) => {
     // Anexa token JWT, se existir
     const token = safeGetStoredToken()
     if (token) {
       const headers: any = (config.headers ?? {}) as any
-      // Axios 1.x pode usar AxiosHeaders (com .set)
       if (typeof headers.set === 'function') {
         headers.set('Authorization', `Bearer ${token}`)
       } else {
@@ -49,7 +63,7 @@ api.interceptors.request.use(
       config.headers = headers
     }
 
-    // Garantia extra (alguns callers podem sobrescrever)
+    // Garante que cookies sejam enviados
     config.withCredentials = true
 
     console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`);
@@ -101,16 +115,16 @@ export const billingApi = {
 
 // Relatórios
 export const reportApi = {
-  generateMyReport: (type: 'PARTIAL' | 'FULL' = 'FULL', format: 'PDF' | 'DOCX' = 'PDF') =>
+  generateMyReport: (type: 'PARTIAL' | 'FULL' = 'FULL', format: 'PDF' | 'DOCX' = 'DOCX') =>
     api.get('/report/me', { params: { type, format } }),
 
-  generateMyBuilderFormReport: (formId: string, format: 'PDF' | 'DOCX' = 'PDF') =>
+  generateMyBuilderFormReport: (formId: string, format: 'PDF' | 'DOCX' = 'DOCX') =>
     api.get(`/report/forms/${formId}`, { params: { format } }),
 
   generateUserReport: (
     userId: string,
     type: 'PARTIAL' | 'FULL' = 'FULL',
-    format: 'PDF' | 'DOCX' = 'PDF',
+    format: 'PDF' | 'DOCX' = 'DOCX',
     topicIds?: string[]
   ) =>
     api.get(`/report/user/${userId}`, {
@@ -206,6 +220,9 @@ export const pldBuilderApi = {
 
   deleteForm: (formId: string) =>
     api.delete(`/pld/forms/${formId}`),
+
+  deleteUserForm: (formId: string) =>
+    api.delete(`/pld/forms/${formId}/user`),
 
   sendFormToUser: (
     formId: string,

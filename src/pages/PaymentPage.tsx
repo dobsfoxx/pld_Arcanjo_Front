@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
-import { ShieldCheck } from 'lucide-react'
+import { ShieldCheck, CreditCard, Settings, Clock, Zap, CheckCircle2 } from 'lucide-react'
 import { billingApi } from '../lib/api'
 import { getToastErrorMessage } from '../lib/errors'
 import { Button } from '../components/Button'
@@ -28,6 +28,9 @@ const PaymentPage: React.FC = () => {
     if (Number.isNaN(dt.getTime())) return null
     return dt
   }, [entitlements?.trialExpiresAt, user?.trialExpiresAt])
+
+  const status = (entitlements?.subscriptionStatus || user?.subscriptionStatus || 'NONE').toString().toUpperCase()
+  const isActive = status === 'ACTIVE'
 
   useEffect(() => {
     const load = async () => {
@@ -80,47 +83,79 @@ const PaymentPage: React.FC = () => {
       <AppHeader title="Pagamento" subtitle="Ative ou gerencie sua licença" />
 
       <main className="flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-xl rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="flex items-start gap-3">
-          <div className="inline-flex items-center justify-center rounded-lg bg-slate-900 p-2">
-            <ShieldCheck className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight text-slate-900">Pagamento</h1>
-            <p className="mt-1 text-sm text-slate-600">
-              Use esta página para ativar/gerenciar sua licença. O checkout abre o Stripe de forma segura quando configurado.
-            </p>
-          </div>
-        </div>
+        <div className="w-full max-w-xl">
+          {/* Main Card */}
+          <div className="bg-white rounded-2xl border-2 border-slate-200 shadow-medium overflow-hidden">
+            {/* Header */}
+            <div className="bg-slate-900 px-8 py-8 text-center relative">
+              <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjAzKSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-50" />
+              <div className="relative">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/10 backdrop-blur border-2 border-white/20 mb-4">
+                  <ShieldCheck size={32} className="text-white" />
+                </div>
+                <h1 className="text-2xl font-bold text-white mb-2">Gerenciar Licença</h1>
+                <p className="text-slate-400 text-sm max-w-sm mx-auto">
+                  Use esta página para ativar ou gerenciar sua licença. O checkout abre o Stripe de forma segura.
+                </p>
+              </div>
+            </div>
 
-        <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-          <p>
-            <span className="font-semibold text-slate-900">Status:</span>{' '}
-            {(entitlements?.subscriptionStatus || user?.subscriptionStatus || 'NONE').toString()}
-          </p>
-          {trialInfo && (
-            <p className="mt-1">
-              <span className="font-semibold text-slate-900">Trial expira em:</span> {trialInfo.toLocaleString()}
-            </p>
-          )}
-          {entitlements?.maxBuilderSections != null && entitlements?.maxBuilderQuestions != null && (
-            <p className="mt-1">
-              <span className="font-semibold text-slate-900">Limites do trial:</span> {entitlements.maxBuilderSections}{' '}
-              itens de avaliação / {entitlements.maxBuilderQuestions} questões
-            </p>
-          )}
-        </div>
+            {/* Status Card */}
+            <div className="p-8">
+              <div className={`rounded-xl p-5 border-2 ${isActive ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
+                <div className="flex items-start gap-4">
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isActive ? 'bg-emerald-100' : 'bg-slate-200'}`}>
+                    {isActive ? (
+                      <CheckCircle2 size={24} className="text-emerald-600" />
+                    ) : (
+                      <Clock size={24} className="text-slate-500" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Status da assinatura</span>
+                    </div>
+                    <p className={`text-lg font-bold ${isActive ? 'text-emerald-700' : 'text-slate-700'}`}>
+                      {isActive ? 'Ativa' : status === 'NONE' ? 'Sem assinatura' : status}
+                    </p>
+                    
+                    {trialInfo && (
+                      <p className="text-sm text-amber-600 mt-2 flex items-center gap-1.5">
+                        <Clock size={14} />
+                        Trial expira em: {trialInfo.toLocaleString()}
+                      </p>
+                    )}
+                    
+                    {entitlements?.maxBuilderSections != null && entitlements?.maxBuilderQuestions != null && (
+                      <p className="text-sm text-slate-600 mt-2 flex items-center gap-1.5">
+                        <Zap size={14} />
+                        Limites: {entitlements.maxBuilderSections} itens / {entitlements.maxBuilderQuestions} questões
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
 
-        <div className="mt-6">
-          <Button type="button" fullWidth loading={loading} onClick={startCheckout}>
-            Continuar para pagamento
-          </Button>
-          <div className="mt-3">
-            <Button type="button" fullWidth variant="secondary" disabled={loading} onClick={openPortal}>
-              Gerenciar assinatura
-            </Button>
+              {/* Actions */}
+              <div className="mt-6 space-y-3">
+                <Button type="button" fullWidth loading={loading} onClick={startCheckout}>
+                  <CreditCard size={18} className="mr-2" />
+                  Continuar para pagamento
+                </Button>
+                <Button type="button" fullWidth variant="secondary" disabled={loading} onClick={openPortal}>
+                  <Settings size={18} className="mr-2" />
+                  Gerenciar assinatura
+                </Button>
+              </div>
+
+              {/* Info */}
+              <div className="mt-6 pt-6 border-t-2 border-slate-100">
+                <p className="text-xs text-slate-500 text-center">
+                  Pagamentos processados de forma segura via Stripe. Seus dados financeiros não são armazenados em nossos servidores.
+                </p>
+              </div>
+            </div>
           </div>
-        </div>
         </div>
       </main>
 

@@ -1,3 +1,17 @@
+/**
+ * PLDBuilderPage - Página principal do construtor de formulários PLD
+ * 
+ * Esta página permite ao usuário criar, editar e gerenciar formulários de avaliação
+ * de PLD (Prevenção à Lavagem de Dinheiro) com seções e questões customizáveis.
+ * 
+ * Funcionalidades principais:
+ * - Criação e edição de seções do formulário
+ * - Adição e configuração de questões por seção
+ * - Upload de evidências/anexos por questão
+ * - Geração de relatórios em PDF
+ * - Sistema de auto-salvamento
+ * - Controle de acesso por assinatura/trial
+ */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -20,10 +34,13 @@ import { ActiveSectionEditor } from '../components/ActiveSectionEditor';
 import { QuestionCard } from '../components/QuestionCard';
 
 export default function PLDBuilderPage() {
+  // Parâmetros de URL e contextos de autenticação
   const [searchParams] = useSearchParams();
   const { itemOptions } = usePldCatalog();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  
+  // Verificação de status da assinatura do usuário
   const subscriptionActive = (user?.subscriptionStatus || '').toUpperCase() === 'ACTIVE';
   const userRole = (user?.role || '').toString().toUpperCase();
   const trialExpiresAtMs = user?.trialExpiresAt ? new Date(user.trialExpiresAt).getTime() : null;
@@ -33,21 +50,27 @@ export default function PLDBuilderPage() {
     !Number.isNaN(trialExpiresAtMs) &&
     trialExpiresAtMs > Date.now();
 
+  // Permissões de edição baseadas no papel e assinatura
   const canEdit = userRole === 'ADMIN' || subscriptionActive || trialActive;
   const isTrial = trialActive;
+  
+  // Limites para contas trial
   const TRIAL_MAX_SECTIONS = 3;
   const TRIAL_MAX_QUESTIONS = 3;
 
   const defaultItem = itemOptions[0] || 'Política (PI)';
 
-  const [sections, setSections] = useState<Section[]>([makeEmptySection(defaultItem)]);
-  const [activeSectionId, setActiveSectionId] = useState<string>(sections[0].id);
+  // Estados principais do formulário - inicia vazio até configuração inicial ser concluída
+  const [sections, setSections] = useState<Section[]>([]);
+  const [activeSectionId, setActiveSectionId] = useState<string>('');
   const [mobileMenu, setMobileMenu] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [concluding, setConcluding] = useState(false);
   const [concludeModalOpen, setConcludeModalOpen] = useState(false);
   const [initialSetupMode, setInitialSetupMode] = useState(false);
+  
+  // Estados do modal de conclusão
   const [concludeName, setConcludeName] = useState('');
   const [concludeSentToEmail, setConcludeSentToEmail] = useState('');
   type ConcludeInstituicao = { id: string; nome: string; cnpj: string };
@@ -57,15 +80,22 @@ export default function PLDBuilderPage() {
   const [concludeIncluirRecomendacoes, setConcludeIncluirRecomendacoes] = useState<'INCLUIR' | 'NAO_INCLUIR'>('INCLUIR');
   const [showMetodologiaPopup, setShowMetodologiaPopup] = useState(false);
   const [showRecomendacoesPopup, setShowRecomendacoesPopup] = useState(false);
-  const [reportFormat, setReportFormat] = useState<'DOCX' | 'PDF'>('DOCX');
   const [editFormName, setEditFormName] = useState<string | null>(null);
   
-  // Estado para modal de envio de formulário
+  // Estados do modal de configuração (acessível pelo header)
+  const [configModalOpen, setConfigModalOpen] = useState(false);
+  const [metadataConfigured, setMetadataConfigured] = useState(false);
+  
+  // Chave do localStorage para metadados do builder
+  const BUILDER_METADATA_KEY = 'pld_builder_metadata';
+  
+  // Estados do modal de envio de formulário
   const [sending, setSending] = useState(false);
   const [sendModalOpen, setSendModalOpen] = useState(false);
   const [sendFormName, setSendFormName] = useState('');
   const [sendFormEmail, setSendFormEmail] = useState('');
 
+  // Textos de ajuda padrão para tooltips
   const defaultHelpTexts = {
     qualificacao:
       'Neste campo, descreva as qualificações profissionais do avaliador responsável pela avaliação de efetividade, incluindo:\n\n- Formação acadêmica\n- Certificações relevantes (ex: CAMS, CFE, CPA, etc.)\n- Experiência profissional na área de PLD/FT\n- Tempo de atuação no mercado financeiro\n- Outras qualificações pertinentes\n\nExemplo: "Profissional com 10 anos de experiência em compliance bancário, certificação CAMS, pós-graduação em Gestão de Riscos..."',
@@ -82,20 +112,23 @@ export default function PLDBuilderPage() {
   const [questionPage, setQuestionPage] = useState(1);
   const QUESTIONS_PER_PAGE = 10;
 
+  // Refs para controle de IDs iniciais (evita recriar recursos já existentes)
   const initialSectionIdsRef = useRef<Set<string>>(new Set());
   const initialQuestionIdsRef = useRef<Map<string, Set<string>>>(new Map());
 
-  // Track last persisted state to avoid re-saving everything on every small change.
+  // Cache do último estado persistido para evitar salvamentos desnecessários
   const lastPersistedSectionPayloadRef = useRef<Map<string, string>>(new Map());
   const lastPersistedQuestionPayloadRef = useRef<Map<string, string>>(new Map());
   const lastPersistedSectionOrderRef = useRef<string[]>([]);
   const lastPersistedQuestionOrderRef = useRef<Map<string, string[]>>(new Map());
 
+  // Ref sincronizada com o estado de seções
   const sectionsRef = useRef(sections);
   useEffect(() => {
     sectionsRef.current = sections;
   }, [sections]);
 
+  // Atualiza estado e ref simultaneamente
   const setSectionsAndSyncRef = (updater: (prev: Section[]) => Section[]) => {
     setSections((prev) => {
       const next = updater(prev);
@@ -114,6 +147,7 @@ export default function PLDBuilderPage() {
     expandedQuestionsRef.current = expandedQuestions;
   }, [expandedQuestions]);
 
+  // Controle do auto-salvamento
   const autosaveTimerRef = useRef<number | null>(null);
   const changeCounterRef = useRef(0);
   const lastSavedCounterRef = useRef(0);
@@ -122,7 +156,7 @@ export default function PLDBuilderPage() {
     async () => false
   );
 
-  // Keep local file selections visible while preventing re-upload loops.
+  // Controle de uploads para evitar re-envio de arquivos já processados
   const uploadedFilesRef = useRef<Map<string, Set<string>>>(new Map());
   const fileKey = (f: File) => `${f.name}:${f.size}:${f.lastModified}`;
   const wasUploaded = (scope: string, f: File) => uploadedFilesRef.current.get(scope)?.has(fileKey(f)) ?? false;
@@ -132,6 +166,45 @@ export default function PLDBuilderPage() {
     set.add(key);
     uploadedFilesRef.current.set(scope, set);
   };
+
+  // Carregar metadados do localStorage ao montar o componente
+  useEffect(() => {
+    try {
+      const savedMetadata = localStorage.getItem(BUILDER_METADATA_KEY);
+      if (savedMetadata) {
+        const parsed = JSON.parse(savedMetadata);
+        if (parsed.concludeName) setConcludeName(parsed.concludeName);
+        if (Array.isArray(parsed.concludeInstituicoes) && parsed.concludeInstituicoes.length > 0) {
+          setConcludeInstituicoes(parsed.concludeInstituicoes);
+        }
+        if (parsed.concludeQualificacaoAvaliador) setConcludeQualificacaoAvaliador(parsed.concludeQualificacaoAvaliador);
+        if (parsed.concludeMostrarMetodologia) setConcludeMostrarMetodologia(parsed.concludeMostrarMetodologia);
+        if (parsed.concludeIncluirRecomendacoes) setConcludeIncluirRecomendacoes(parsed.concludeIncluirRecomendacoes);
+        if (parsed.metadataConfigured) setMetadataConfigured(parsed.metadataConfigured);
+        if (parsed.editFormName) setEditFormName(parsed.editFormName);
+      }
+    } catch (e) {
+      console.error('Erro ao carregar metadados do localStorage:', e);
+    }
+  }, []);
+
+  // Salvar metadados no localStorage quando mudarem
+  useEffect(() => {
+    try {
+      const metadata = {
+        concludeName,
+        concludeInstituicoes,
+        concludeQualificacaoAvaliador,
+        concludeMostrarMetodologia,
+        concludeIncluirRecomendacoes,
+        metadataConfigured,
+        editFormName,
+      };
+      localStorage.setItem(BUILDER_METADATA_KEY, JSON.stringify(metadata));
+    } catch (e) {
+      console.error('Erro ao salvar metadados no localStorage:', e);
+    }
+  }, [concludeName, concludeInstituicoes, concludeQualificacaoAvaliador, concludeMostrarMetodologia, concludeIncluirRecomendacoes, metadataConfigured, editFormName]);
 
   const progressData: FormProgress = useMemo(() => {
     const totals = sections.reduce(
@@ -235,14 +308,12 @@ export default function PLDBuilderPage() {
       const res = await pldBuilderApi.listSections();
       const apiSections = res.data.sections;
 
-      // Quando o builder está vazio (ex: após /reset), precisamos limpar o estado local.
-      // Caso contrário, ficamos com ids antigos (já deletados no backend) e o próximo save falha.
+      // Quando o builder está vazio (ex: após /reset), limpar estado e abrir modal de configuração
       if (!apiSections.length) {
-        const fresh = makeEmptySection(defaultItem);
-        sectionsRef.current = [fresh];
-        setSections([fresh]);
-        setActiveSectionId(fresh.id);
-        activeSectionIdRef.current = fresh.id;
+        sectionsRef.current = [];
+        setSections([]);
+        setActiveSectionId('');
+        activeSectionIdRef.current = '';
         setExpandedQuestions(new Set());
         expandedQuestionsRef.current = new Set();
 
@@ -259,6 +330,14 @@ export default function PLDBuilderPage() {
         if (autosaveTimerRef.current) {
           window.clearTimeout(autosaveTimerRef.current);
           autosaveTimerRef.current = null;
+        }
+
+        // Se não há editFormId na URL, abrir modal de configuração inicial
+        const formIdParam = searchParams.get('editFormId');
+        if (!formIdParam && canEdit) {
+          setInitialSetupMode(true);
+          setConcludeInstituicoes([{ id: `inst_${Date.now()}`, nome: '', cnpj: '' }]);
+          setConcludeModalOpen(true);
         }
         return;
       }
@@ -356,7 +435,7 @@ export default function PLDBuilderPage() {
     } finally {
       setLoading(false);
     }
-  }, [defaultItem]);
+  }, [defaultItem, searchParams, canEdit]);
 
   useEffect(() => {
     void loadSections();
@@ -375,6 +454,33 @@ export default function PLDBuilderPage() {
           
           if (form && form.sections) {
             setEditFormName(form.name);
+            
+            // Carregar metadados salvos se existirem
+            if (form.metadata) {
+              const meta = form.metadata;
+              if (Array.isArray(meta.instituicoes) && meta.instituicoes.length > 0) {
+                setConcludeInstituicoes(meta.instituicoes.map((inst: any, idx: number) => ({
+                  id: inst.id || `inst_${Date.now()}_${idx}`,
+                  nome: inst.nome || '',
+                  cnpj: inst.cnpj || '',
+                })));
+              }
+              if (meta.qualificacaoAvaliador) {
+                setConcludeQualificacaoAvaliador(meta.qualificacaoAvaliador);
+              }
+              if (meta.mostrarMetodologia === 'MOSTRAR' || meta.mostrarMetodologia === 'NAO_MOSTRAR') {
+                setConcludeMostrarMetodologia(meta.mostrarMetodologia);
+              }
+              if (meta.incluirRecomendacoes === 'INCLUIR' || meta.incluirRecomendacoes === 'NAO_INCLUIR') {
+                setConcludeIncluirRecomendacoes(meta.incluirRecomendacoes);
+              }
+              // Se tem instituições e qualificação preenchidos, marca como configurado
+              const hasInst = Array.isArray(meta.instituicoes) && meta.instituicoes.some((i: any) => i.nome?.trim());
+              const hasQual = meta.qualificacaoAvaliador?.trim();
+              if (hasInst && hasQual) {
+                setMetadataConfigured(true);
+              }
+            }
             
             // Mapear seções do formulário para o formato do builder
             const mappedSections = form.sections.map((sec: any) => ({
@@ -583,6 +689,24 @@ export default function PLDBuilderPage() {
         const copy = [...s.questions];
         const [removed] = copy.splice(idx, 1);
         copy.splice(nextIdx, 0, removed);
+        return { ...s, questions: copy };
+      })
+    );
+    markDirtyAndScheduleAutosave();
+  };
+
+  const moveQuestionTo = (qId: string, position: number) => {
+    if (!canEdit) return;
+    setSectionsAndSyncRef((prev) =>
+      prev.map((s) => {
+        if (s.id !== activeSectionId) return s;
+        const idx = s.questions.findIndex((q) => q.id === qId);
+        if (idx < 0) return s;
+        const targetIdx = Math.min(Math.max(position - 1, 0), s.questions.length - 1);
+        if (targetIdx === idx) return s;
+        const copy = [...s.questions];
+        const [removed] = copy.splice(idx, 1);
+        copy.splice(targetIdx, 0, removed);
         return { ...s, questions: copy };
       })
     );
@@ -947,7 +1071,8 @@ export default function PLDBuilderPage() {
       return;
     }
 
-    const ok = await persistBuilder({ silent: true, reload: true, setBusy: true });
+    // Salva sem recarregar para preservar arquivos de upload na UI
+    const ok = await persistBuilder({ silent: true, reload: false, setBusy: true });
     if (!ok) return;
 
     try {
@@ -974,16 +1099,17 @@ export default function PLDBuilderPage() {
       const introMetadata = {
         instituicoes: concludeInstituicoes.map((i) => ({ nome: i.nome?.trim() || '', cnpj: i.cnpj || '' })),
         qualificacaoAvaliador: concludeQualificacaoAvaliador || '',
+        mostrarMetodologia: concludeMostrarMetodologia,
+        incluirRecomendacoes: concludeIncluirRecomendacoes,
       };
 
       toast.loading('Gerando relatório...', { id: 'pld-report' });
-      const res = await reportApi.generatePldBuilderReport(reportFormat, {
+      const res = await reportApi.generatePldBuilderReport('DOCX', {
         name: introName,
         metadata: introMetadata,
       });
 
-      const ext = reportFormat === 'PDF' ? 'pdf' : 'docx';
-      const filename = `${safeFilenameBase(introName || 'relatorio-pld')}.${ext}`;
+      const filename = `${safeFilenameBase(introName || 'relatorio-pld')}.docx`;
 
       // Preferir signedUrl (storage externo), mas baixar sem abrir nova guia.
       if (res.data.signedUrl && /^https?:\/\//i.test(res.data.signedUrl)) {
@@ -1094,14 +1220,27 @@ export default function PLDBuilderPage() {
       return;
     }
 
-    // Apenas segue para o builder (não salva/conclui aqui)
+    // Cria a seção inicial ao confirmar configuração (se ainda não existir)
+    if (sections.length === 0) {
+      const fresh = makeEmptySection(defaultItem);
+      sectionsRef.current = [fresh];
+      setSections([fresh]);
+      setActiveSectionId(fresh.id);
+      activeSectionIdRef.current = fresh.id;
+    }
+
+    // Marca metadados como configurados
+    setMetadataConfigured(true);
+
+    // Segue para o builder
     setInitialSetupMode(false);
     setConcludeModalOpen(false);
     setEditFormName(name);
   };
 
   const handleHeaderConclude = async () => {
-    const ok = await persistBuilder({ silent: false, reload: true, setBusy: true });
+    // Salva silenciosamente sem recarregar para preservar arquivos de upload na UI
+    const ok = await persistBuilder({ silent: true, reload: false, setBusy: true });
     if (!ok) return;
     setInitialSetupMode(false);
     openConcludeModal();
@@ -1183,6 +1322,10 @@ export default function PLDBuilderPage() {
       setConcludeQualificacaoAvaliador('');
       setConcludeMostrarMetodologia('MOSTRAR');
       setConcludeIncluirRecomendacoes('INCLUIR');
+      setMetadataConfigured(false);
+      setEditFormName(null);
+      // Limpa metadados do localStorage ao concluir
+      localStorage.removeItem(BUILDER_METADATA_KEY);
       toast.success('Formulário salvo com sucesso!', { id: 'pld-conclude' });
 
       // Evita carregar um builder em branco (sem modal de instruções).
@@ -1205,15 +1348,23 @@ export default function PLDBuilderPage() {
   };
 
   const clearAnsweredFlagsForSend = () => {
-    const hasAnswered = sectionsRef.current.some((sec) => sec.questions.some((q) => q.respondida));
-    if (!hasAnswered) return;
+    // Gera as sections com flags limpos
+    const clearedSections = sectionsRef.current.map((sec) => ({
+      ...sec,
+      questions: sec.questions.map((q) => ({
+        ...q,
+        respondida: false,
+        resposta: '' as const, // Limpa a resposta para que o usuário preencha
+        respostaTexto: '', // Limpa a justificativa para que o usuário preencha
+        respostaArquivo: [], // Limpa arquivos de resposta
+      })),
+    }));
 
-    setSectionsAndSyncRef((prev) =>
-      prev.map((sec) => ({
-        ...sec,
-        questions: sec.questions.map((q) => (q.respondida ? { ...q, respondida: false } : q)),
-      }))
-    );
+    // IMPORTANTE: Atualiza o ref SINCRONAMENTE antes de persistBuilder usar
+    sectionsRef.current = clearedSections;
+    
+    // Também atualiza o state do React para manter consistência na UI
+    setSections(clearedSections);
   };
 
   // Confirma envio: salva o form e envia para o email
@@ -1262,6 +1413,8 @@ export default function PLDBuilderPage() {
       setSendModalOpen(false);
       setSendFormName('');
       setSendFormEmail('');
+      // Limpa metadados do localStorage ao enviar
+      localStorage.removeItem(BUILDER_METADATA_KEY);
       toast.success('Formulário enviado com sucesso!', { id: 'pld-send' });
       
       // 3. Redirecionar para página de formulários
@@ -1292,11 +1445,11 @@ export default function PLDBuilderPage() {
         <>
           {concludeModalOpen && (
             <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center px-4">
-              <div className="w-full max-w-lg bg-white rounded-lg shadow-xl border border-slate-200 overflow-hidden">
+              <div className="w-full max-w-lg bg-white rounded-2xl shadow-strong border-2 border-slate-200 overflow-hidden">
                 <div className="max-h-[90vh] overflow-y-auto">
-                  <div className="p-6 bg-slate-900">
+                  <div className="p-6 bg-slate-900 rounded-t-2xl">
                     <h2 className="text-lg font-bold text-white">{initialSetupMode ? 'Introdução' : 'Detalhes do Formulário'}</h2>
-                    <p className="text-sm text-slate-400 mt-1">
+                    <p className="text-sm text-slate-300 mt-1">
                       {initialSetupMode
                         ? 'Preencha as informações iniciais para começar a preencher o builder.'
                         : 'Dê um nome ao formulário para salvá-lo no controle do ADMIN. Ao confirmar, o builder será limpo.'}
@@ -1547,11 +1700,11 @@ export default function PLDBuilderPage() {
           {/* Modal de Enviar Formulário */}
           {sendModalOpen && (
             <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center px-4">
-              <div className="w-full max-w-lg bg-white rounded-lg shadow-xl border border-slate-200 overflow-hidden">
+              <div className="w-full max-w-lg bg-white rounded-2xl shadow-strong border-2 border-slate-200 overflow-hidden">
                 <div className="max-h-[90vh] overflow-y-auto">
-                  <div className="p-6 bg-slate-900">
+                  <div className="p-6 bg-slate-900 rounded-t-2xl">
                     <h2 className="text-lg font-bold text-white">Enviar Formulário</h2>
-                    <p className="text-sm text-slate-200 mt-1">
+                    <p className="text-sm text-slate-300 mt-1">
                       Salve e envie o formulário para um usuário responder. O formulário será enviado visualmente idêntico, mas com campos bloqueados para edição do usuário.
                     </p>
                   </div>
@@ -1660,13 +1813,250 @@ export default function PLDBuilderPage() {
             </div>
           )}
 
+          {/* Modal de Configuração (acessível pelo header) */}
+          {configModalOpen && (
+            <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center px-4">
+              <div className="w-full max-w-lg bg-white rounded-2xl shadow-strong border-2 border-slate-200 overflow-hidden">
+                <div className="max-h-[90vh] overflow-y-auto">
+                  <div className="p-6 bg-slate-900 rounded-t-2xl">
+                    <h2 className="text-lg font-bold text-white">Configurações do Formulário</h2>
+                    <p className="text-sm text-slate-300 mt-1">
+                      Configure as informações que serão incluídas no relatório.
+                    </p>
+                  </div>
+
+                  <div className="p-6 space-y-4">
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                      <p className="text-xs font-bold text-slate-600 uppercase mb-3">Introdução do Relatório</p>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-bold text-slate-600">Instituições *</p>
+                          <button
+                            type="button"
+                            onClick={addConcludeInstituicao}
+                            className="inline-flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 rounded-lg hover:bg-slate-200 transition-colors"
+                          >
+                            <Plus size={14} />
+                            Adicionar
+                          </button>
+                        </div>
+
+                        {concludeInstituicoes.length === 0 ? (
+                          <p className="text-sm text-slate-500">Nenhuma instituição adicionada.</p>
+                        ) : (
+                          <div className="space-y-3">
+                            {concludeInstituicoes.map((inst, idx) => (
+                              <div key={inst.id} className="p-3 bg-white border border-slate-200 rounded-xl">
+                                <div className="flex items-start gap-3">
+                                  <span className="shrink-0 w-6 h-6 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold">
+                                    {idx + 1}
+                                  </span>
+                                  <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div>
+                                      <label className="block text-xs font-bold text-slate-600 mb-1">Nome da Instituição</label>
+                                      <input
+                                        value={inst.nome}
+                                        onChange={(e) => updateConcludeInstituicao(inst.id, 'nome', e.target.value)}
+                                        placeholder="Ex: Banco ABC S.A."
+                                        className="w-full h-10 px-3 text-sm bg-white border border-slate-200 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="block text-xs font-bold text-slate-600 mb-1">CNPJ</label>
+                                      <input
+                                        value={inst.cnpj}
+                                        onChange={(e) => updateConcludeInstituicao(inst.id, 'cnpj', formatCnpj(e.target.value))}
+                                        placeholder="XX.XXX.XXX/XXXX-XX"
+                                        maxLength={18}
+                                        className="w-full h-10 px-3 text-sm bg-white border border-slate-200 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
+                                      />
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeConcludeInstituicao(inst.id)}
+                                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                    title="Remover"
+                                    disabled={concludeInstituicoes.length === 1}
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
+                                {concludeInstituicoes.length === 1 && (
+                                  <p className="text-xs text-slate-500 mt-2">Mínimo de 1 instituição.</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-600 mb-1">Qualificação do Avaliador *</label>
+                          <textarea
+                            value={concludeQualificacaoAvaliador}
+                            onChange={(e) => setConcludeQualificacaoAvaliador(e.target.value)}
+                            placeholder="Descreva a qualificação do avaliador responsável..."
+                            rows={4}
+                            className="w-full px-4 py-3 text-sm bg-white border border-slate-200 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
+                          />
+                        </div>
+
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <label className="text-xs font-bold text-slate-600">Metodologia - Resultado da Avaliação</label>
+                            <button
+                              type="button"
+                              onClick={() => setShowMetodologiaPopup(true)}
+                              className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors"
+                              title="Ver esclarecimentos"
+                            >
+                              <HelpCircle size={14} />
+                            </button>
+                          </div>
+                          <div className="flex gap-3">
+                            <label
+                              className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                                concludeMostrarMetodologia === 'MOSTRAR'
+                                  ? 'border-slate-400 bg-slate-100 text-slate-800'
+                                  : 'border-slate-200 hover:border-slate-300'
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name="config-metodologia"
+                                value="MOSTRAR"
+                                checked={concludeMostrarMetodologia === 'MOSTRAR'}
+                                onChange={() => setConcludeMostrarMetodologia('MOSTRAR')}
+                                className="sr-only"
+                              />
+                              <span className="font-medium">MOSTRAR</span>
+                            </label>
+                            <label
+                              className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                                concludeMostrarMetodologia === 'NAO_MOSTRAR'
+                                  ? 'border-amber-500 bg-amber-50 text-amber-700'
+                                  : 'border-slate-200 hover:border-slate-300'
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name="config-metodologia"
+                                value="NAO_MOSTRAR"
+                                checked={concludeMostrarMetodologia === 'NAO_MOSTRAR'}
+                                onChange={() => setConcludeMostrarMetodologia('NAO_MOSTRAR')}
+                                className="sr-only"
+                              />
+                              <span className="font-medium">NÃO MOSTRAR</span>
+                            </label>
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <label className="text-xs font-bold text-slate-600">Recomendações</label>
+                            <button
+                              type="button"
+                              onClick={() => setShowRecomendacoesPopup(true)}
+                              className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors"
+                              title="Ver esclarecimentos"
+                            >
+                              <HelpCircle size={14} />
+                            </button>
+                          </div>
+                          <div className="flex gap-3">
+                            <label
+                              className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                                concludeIncluirRecomendacoes === 'INCLUIR'
+                                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                                  : 'border-slate-200 hover:border-slate-300'
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name="config-recomendacoes"
+                                value="INCLUIR"
+                                checked={concludeIncluirRecomendacoes === 'INCLUIR'}
+                                onChange={() => setConcludeIncluirRecomendacoes('INCLUIR')}
+                                className="sr-only"
+                              />
+                              <span className="font-medium">INCLUIR</span>
+                            </label>
+                            <label
+                              className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                                concludeIncluirRecomendacoes === 'NAO_INCLUIR'
+                                  ? 'border-amber-500 bg-amber-50 text-amber-700'
+                                  : 'border-slate-200 hover:border-slate-300'
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name="config-recomendacoes"
+                                value="NAO_INCLUIR"
+                                checked={concludeIncluirRecomendacoes === 'NAO_INCLUIR'}
+                                onChange={() => setConcludeIncluirRecomendacoes('NAO_INCLUIR')}
+                                className="sr-only"
+                              />
+                              <span className="font-medium">NÃO INCLUIR</span>
+                            </label>
+                          </div>
+                          {concludeIncluirRecomendacoes === 'NAO_INCLUIR' && (
+                            <p className="text-xs text-amber-600 mt-2">
+                              O campo "Recomendação" ficará desabilitado nas questões.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-6 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setConfigModalOpen(false)}
+                      className="px-4 py-2.5 rounded-lg font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Validar campos obrigatórios
+                        const hasInst = concludeInstituicoes.some(i => i.nome.trim());
+                        const hasQual = concludeQualificacaoAvaliador.trim();
+                        if (!hasInst) {
+                          toast.error('Adicione pelo menos uma instituição com nome.');
+                          return;
+                        }
+                        if (!hasQual) {
+                          toast.error('Preencha a qualificação do avaliador.');
+                          return;
+                        }
+                        setMetadataConfigured(true);
+                        setConfigModalOpen(false);
+                        toast.success('Configurações salvas.');
+                      }}
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold bg-slate-900 text-white hover:bg-slate-800 transition-colors"
+                    >
+                      Salvar Configurações
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <BuilderHeader
             canEdit={canEdit}
-            reportFormat={reportFormat}
-            onReportFormatChange={setReportFormat}
             onGenerateReport={() => void handleGenerateReport()}
             onConcludeReport={() => void handleHeaderConclude()}
             onSendForm={() => void handleSendForm()}
+            onOpenConfig={() => {
+              // Garantir que tenha pelo menos uma instituição ao abrir o modal de configuração
+              if (concludeInstituicoes.length === 0) {
+                setConcludeInstituicoes([{ id: `inst_${Date.now()}`, nome: '', cnpj: '' }]);
+              }
+              setConfigModalOpen(true);
+            }}
             onOpenAssignments={() => navigate('/admin/assignments')}
             onOpenForms={() => navigate('/admin/forms')}
             saving={saving}
@@ -1676,6 +2066,7 @@ export default function PLDBuilderPage() {
             onToggleMobileMenu={() => setMobileMenu((prev) => !prev)}
             customTitle={editFormName ? `Editando: ${editFormName}` : undefined}
             customSubtitle={editFormName ? 'Modo de Edição' : undefined}
+            configBadge={!metadataConfigured}
           />
 
           <div className="flex flex-1 max-w-7xl mx-auto w-full relative">
@@ -1723,30 +2114,59 @@ export default function PLDBuilderPage() {
             )}
 
             <main className="flex-1 p-4 md:p-8 overflow-y-auto bg-[#FAF9F6]">
-              <div className="mb-6">
-                <ProgressDashboard progress={progressData} />
-              </div>
-
-              <div className="max-w-4xl mx-auto space-y-8">
-                <ActiveSectionEditor
-                  activeSection={activeSection}
-                  itemOptions={itemOptions}
-                  onUpdateSection={updateSection}
-                  canEdit={canEdit}
-                />
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-2xl font-bold text-slate-800 ">Questões</h3>
-                      <p className="text-md font-bold text-slate-800">Adicione perguntas e defina todos os campos obrigatórios</p>
+              {/* Mostrar mensagem quando não há seções (aguardando configuração inicial) */}
+              {sections.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center">
+                  <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md">
+                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <FileText size={32} className="text-slate-400" />
                     </div>
-                    <span className="bg-white px-3 py-1 rounded-full border border-slate-200 text-xs font-semibold text-slate-600 shadow-sm">
-                      Exibindo {filteredQuestions.length} de {activeSection.questions.length}
-                    </span>
+                    <h2 className="text-xl font-bold text-slate-800 mb-2">Nenhum formulário configurado</h2>
+                    <p className="text-slate-600 mb-6">
+                      Configure os dados iniciais do formulário para começar a adicionar seções e questões.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setInitialSetupMode(true);
+                        setConcludeInstituicoes((prev) =>
+                          prev.length > 0 ? prev : [{ id: `inst_${Date.now()}`, nome: '', cnpj: '' }]
+                        );
+                        setConcludeModalOpen(true);
+                      }}
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 transition-colors"
+                    >
+                      <Plus size={18} />
+                      Configurar Formulário
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="mb-6">
+                    <ProgressDashboard progress={progressData} />
                   </div>
 
-                  {activeSection.questions.length > 0 && (
+                  <div className="max-w-4xl mx-auto space-y-8">
+                    <ActiveSectionEditor
+                      activeSection={activeSection}
+                      itemOptions={itemOptions}
+                      onUpdateSection={updateSection}
+                      canEdit={canEdit}
+                    />
+
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-2xl font-bold text-slate-800 ">Questões</h3>
+                          <p className="text-md font-bold text-slate-800">Adicione perguntas e defina todos os campos obrigatórios</p>
+                        </div>
+                        <span className="bg-white px-3 py-1 rounded-full border border-slate-200 text-xs font-semibold text-slate-600 shadow-sm">
+                          Exibindo {filteredQuestions.length} de {activeSection?.questions?.length ?? 0}
+                        </span>
+                      </div>
+
+                      {(activeSection?.questions?.length ?? 0) > 0 && (
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
@@ -1779,7 +2199,7 @@ export default function PLDBuilderPage() {
                     </div>
                   )}
 
-                  {activeSection.questions.length === 0 ? (
+                  {(activeSection?.questions?.length ?? 0) === 0 ? (
                     <div className="text-center py-16 bg-white rounded-2xl border border-slate-200 shadow-sm">
                       <div className="bg-blue-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                         <FileText className="h-8 w-8 text-blue-500" />
@@ -1813,7 +2233,7 @@ export default function PLDBuilderPage() {
 
                       {paginatedQuestions.map((q) => {
                         const originalIdx = questionIndexById.get(q.id) ?? 0;
-                        const total = activeSection.questions.length;
+                        const total = activeSection?.questions?.length ?? 0;
                         return (
                         <QuestionCard
                           key={q.id}
@@ -1833,6 +2253,7 @@ export default function PLDBuilderPage() {
                           }
                           onMoveUp={originalIdx === 0 ? undefined : () => moveQuestion(q.id, -1)}
                           onMoveDown={originalIdx === total - 1 ? undefined : () => moveQuestion(q.id, 1)}
+                          onMoveTo={total > 1 ? (position) => moveQuestionTo(q.id, position) : undefined}
                           onChange={(patch) => updateQuestion(q.id, patch)}
                           onChangeSync={(patch) => updateQuestionSync(q.id, patch)}
                           onDelete={() => deleteQuestionLocal(q.id)}
@@ -1903,7 +2324,7 @@ export default function PLDBuilderPage() {
                     </div>
                   )}
 
-                  {activeSection.questions.length > 0 && (
+                  {(activeSection?.questions?.length ?? 0) > 0 && (
                     <button
                       onClick={addQuestion}
                       disabled={!canAddQuestion}
@@ -1924,6 +2345,8 @@ export default function PLDBuilderPage() {
               </div>
 
               <div className="h-24" />
+                </>
+              )}
             </main>
           </div>
 
@@ -1983,18 +2406,18 @@ type SimplePopupProps = {
 function SimplePopup({ title, onClose, children }: SimplePopupProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-lg shadow-xl border border-slate-200 max-w-lg w-full overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
-          <h3 className="text-lg font-bold text-slate-900">{title}</h3>
+      <div className="bg-white rounded-2xl shadow-strong border-2 border-slate-200 max-w-lg w-full overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 bg-slate-900 rounded-t-2xl">
+          <h3 className="text-lg font-bold text-white">{title}</h3>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
           >
             <span className="sr-only">Fechar</span>
-            ✕
+            <span className="text-white">✕</span>
           </button>
         </div>
-        <div className="px-6 py-4">{children}</div>
+        <div className="px-6 py-5">{children}</div>
       </div>
     </div>
   );

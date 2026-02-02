@@ -42,6 +42,11 @@ export const QuestionCard: React.FC<{
   const updateTest = (patch: Partial<TestData>) => update({ test: { ...question.test, ...patch }, respondida: false });
   const updateActionPlan = (field: keyof ActionPlan, value: string) =>
     updateTest({ actionPlan: { ...question.test.actionPlan, [field]: value } });
+  const renderCharCount = (value: string | null | undefined, max: number) => (
+    <div className="mt-1 text-xs text-slate-500 text-right" aria-live="polite">
+      {(value?.length ?? 0)}/{max}
+    </div>
+  );
 
   const saveErrors = useMemo(() => {
     const errors: string[] = [];
@@ -122,7 +127,7 @@ export const QuestionCard: React.FC<{
   const getCriticidadeColor = (crit: string) => {
     switch (crit) {
       case 'ALTA': return 'bg-red-100 text-red-700 border-red-200';
-      case 'MEDIA': return 'bg-amber-100 text-amber-700 border-amber-200';
+      case 'MÉDIA': return 'bg-amber-100 text-amber-700 border-amber-200';
       case 'BAIXA': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
       default: return 'bg-slate-100 text-slate-700 border-slate-200';
     }
@@ -311,6 +316,7 @@ export const QuestionCard: React.FC<{
                   maxLength={200}
                   className="w-full h-11 px-3 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 />
+                {renderCharCount(question.capitulacao, 200)}
               </div>
             </div>
 
@@ -372,9 +378,10 @@ export const QuestionCard: React.FC<{
                           disabled={!canEdit}
                           placeholder="Descreva o teste realizado..."
                           rows={3}
-                          maxLength={300}
+                          maxLength={600}
                           className="w-full px-3 py-3 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500 disabled:opacity-50 disabled:cursor-not-allowed resize-none transition-colors"
                         />
+                        {renderCharCount(question.test.description, 600)}
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-white rounded-lg border border-slate-200">
@@ -410,9 +417,10 @@ export const QuestionCard: React.FC<{
                             onChange={(e) => updateTest({ requisicaoRef: e.target.value })}
                             disabled={!canEdit}
                             placeholder="Ex: DOC-001"
-                            maxLength={200}
+                            maxLength={300}
                             className="w-full h-10 px-3 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                           />
+                          {renderCharCount(question.test.requisicaoRef, 300)}
                         </div>
 
                         {/* Resposta */}
@@ -447,9 +455,10 @@ export const QuestionCard: React.FC<{
                             onChange={(e) => updateTest({ respostaRef: e.target.value })}
                             disabled={!canEdit}
                             placeholder="Ex: DOC-002"
-                            maxLength={200}
+                            maxLength={300}
                             className="w-full h-10 px-3 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                           />
+                          {renderCharCount(question.test.respostaRef, 300)}
                         </div>
 
                         {/* Amostra */}
@@ -484,9 +493,10 @@ export const QuestionCard: React.FC<{
                             onChange={(e) => updateTest({ amostraRef: e.target.value })}
                             disabled={!canEdit}
                             placeholder="Ex: DOC-003"
-                            maxLength={200}
+                            maxLength={300}
                             className="w-full h-10 px-3 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                           />
+                          {renderCharCount(question.test.amostraRef, 300)}
                         </div>
 
                         {/* Evidências */}
@@ -521,47 +531,53 @@ export const QuestionCard: React.FC<{
                             onChange={(e) => updateTest({ evidenciasRef: e.target.value })}
                             disabled={!canEdit}
                             placeholder="Ex: DOC-004"
-                            maxLength={200}
+                            maxLength={300}
                             className="w-full h-10 px-3 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                           />
+                          {renderCharCount(question.test.evidenciasRef, 300)}
                         </div>
                       </div>
                     </div>
                   )}
 
                   {question.test.status === 'NAO_PLANO' && (
-                    <div className="p-4 rounded-lg border border-slate-200">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h4 className="text-sm font-bold text-black">Comentários (Plano de Ação)</h4>
+                    <div className="p-4 rounded-xl border-2 border-amber-100 bg-amber-50/30">
+                      <div className="flex items-center gap-2 mb-3">
+                        <h4 className="text-sm font-bold text-slate-900">Comentários (Plano de Ação)</h4>
                         <button
                           type="button"
                           onClick={() =>
                             toast.custom((t) => (
-                              <div className="max-w-md w-full bg-white border border-slate-200 rounded-lg shadow-lg p-4">
-                                <div className="flex items-start justify-between gap-3">
-                                  <p className="text-sm text-slate-700">
+                              <div className="max-w-md w-full bg-white border-2 border-slate-200 rounded-2xl shadow-strong overflow-hidden">
+                                <div className="px-4 py-3 bg-slate-900">
+                                  <div className="flex items-center justify-between gap-3">
+                                    <h4 className="text-sm font-bold text-white">Esclarecimentos - Plano de Ação</h4>
+                                    <button
+                                      type="button"
+                                      onClick={() => toast.dismiss(t.id)}
+                                      className="text-white/70 hover:text-white transition-colors"
+                                      aria-label="Fechar"
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                </div>
+                                <div className="p-4">
+                                  <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">
                                     {planoAcaoHelpText ||
                                       'Configure as instruções para plano de ação no modal de envio do formulário ao usuário.'}
                                   </p>
-                                  <button
-                                    type="button"
-                                    onClick={() => toast.dismiss(t.id)}
-                                    className="text-slate-400 hover:text-slate-700"
-                                    aria-label="Fechar"
-                                  >
-                                    ✕
-                                  </button>
                                 </div>
                               </div>
                             ))
                           }
-                          className="text-amber-600 hover:text-amber-800 transition-colors"
+                          className="p-1 text-amber-600 hover:text-amber-800 hover:bg-amber-100 rounded-lg transition-colors"
                           title="Informações sobre plano de ação"
                         >
                           <HelpCircle className="w-4 h-4" />
                         </button>
                       </div>
-                      <p className="text-xs text-slate-600 mb-2">O usuário preencherá as observações e o plano de ação em até 600 caracteres neste campo.</p>
+                      <p className="text-xs text-slate-600 mb-3">O usuário preencherá as observações e o plano de ação em até 600 caracteres neste campo.</p>
                       <textarea
                         id={`comentarios-${question.id}`}
                         value={question.test.actionPlan.comentarios}
@@ -570,8 +586,11 @@ export const QuestionCard: React.FC<{
                         placeholder="Comentários do plano de ação..."
                         rows={5}
                         maxLength={600}
-                        className="w-full px-3 py-2 text-sm bg-white border  rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed resize-none transition-colors"
+                        className="w-full px-3 py-2 text-sm bg-white border-2 border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-200 focus:border-amber-300 disabled:opacity-50 disabled:cursor-not-allowed resize-none transition-colors"
                       />
+                      <div className="mt-1.5 text-xs text-slate-500 text-right" aria-live="polite">
+                        {(question.test.actionPlan.comentarios?.length ?? 0)}/600
+                      </div>
                     </div>
                   )}
                 </div>
@@ -636,6 +655,7 @@ export const QuestionCard: React.FC<{
                       maxLength={500}
                       className="w-full px-3 py-3 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500 disabled:opacity-50 disabled:cursor-not-allowed resize-none transition-colors"
                     />
+                    {renderCharCount(question.respostaTexto, 500)}
                   </div>
 
                   <div className="mb-4">
@@ -681,6 +701,7 @@ export const QuestionCard: React.FC<{
                           maxLength={500}
                           className="w-full px-3 py-3 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500 disabled:opacity-50 disabled:cursor-not-allowed resize-none mb-3 transition-colors"
                         />
+                        {renderCharCount(question.deficienciaTexto, 500)}
                         <label className="block text-xs font-medium text-slate-500 mb-1.5">
                           Arquivo comprobatório
                         </label>
@@ -713,9 +734,10 @@ export const QuestionCard: React.FC<{
                             disabled={!canEdit}
                             placeholder="Descreva a recomendação de melhoria..."
                             rows={4}
-                            maxLength={500}
+                            maxLength={300}
                             className="w-full px-3 py-3 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500 disabled:opacity-50 disabled:cursor-not-allowed resize-none transition-colors"
                           />
+                          {renderCharCount(question.recomendacaoTexto, 300)}
                         </div>
                       )}
                     </div>

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   FileText, Send, Eye, Mail, Plus, 
-  Loader2, Trash2, ChevronLeft, ChevronRight, Edit, Download
+  Loader2, Trash2, ChevronLeft, ChevronRight, Download
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/useAuth';
@@ -226,9 +226,9 @@ export default function AdminFormsPage() {
           .slice(0, 80) || 'relatorio';
 
       toast.loading('Gerando relatório...', { id: `report-${formId}` });
-      const res = await reportApi.generateMyBuilderFormReport(formId, 'PDF');
+      const res = await reportApi.generateMyBuilderFormReport(formId, 'DOCX');
 
-      const filename = `${safeFilenameBase(formName || `relatorio-${formId}`)}.pdf`;
+      const filename = `${safeFilenameBase(formName || `relatorio-${formId}`)}.docx`;
 
       if (res.data?.signedUrl && /^https?:\/\//i.test(res.data.signedUrl)) {
         const fetchRes = await fetch(res.data.signedUrl);
@@ -301,22 +301,39 @@ export default function AdminFormsPage() {
       <main className="max-w-7xl mx-auto px-4 py-8 flex-1 w-full">
         {/* Stats Cards */}
         {!loading && forms.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-sm">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Total</p>
-              <p className="text-2xl font-bold text-slate-900">{forms.length}</p>
-            </div>
-            <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-sm">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Rascunhos</p>
-              <p className="text-2xl font-bold text-slate-900">{formStats.draft}</p>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center">
+                  <FileText size={22} className="text-slate-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total</p>
+                  <p className="text-2xl font-bold text-slate-900">{forms.length}</p>
+                </div>
+              </div>
             </div>
             <div className="bg-white rounded-lg border border-amber-200 p-4 shadow-sm">
-              <p className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1">Em andamento</p>
-              <p className="text-2xl font-bold text-amber-700">{formStats.pending}</p>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center">
+                  <FileText size={22} className="text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-amber-600 uppercase tracking-wider">Em andamento</p>
+                  <p className="text-2xl font-bold text-amber-700">{formStats.pending}</p>
+                </div>
+              </div>
             </div>
             <div className="bg-white rounded-lg border border-emerald-200 p-4 shadow-sm">
-              <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Concluídos</p>
-              <p className="text-2xl font-bold text-emerald-700">{formStats.completed}</p>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
+                  <FileText size={22} className="text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Concluídos</p>
+                  <p className="text-2xl font-bold text-emerald-700">{formStats.completed}</p>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -441,15 +458,6 @@ export default function AdminFormsPage() {
 
                             <button
                               type="button"
-                              onClick={() => handleViewForm(form.id)}
-                              className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-                              title="Editar"
-                            >
-                              <Edit size={18} />
-                            </button>
-
-                            <button
-                              type="button"
                               onClick={() => handleDeleteClick(form)}
                               disabled={deletingFormId === form.id}
                               className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50"
@@ -523,17 +531,15 @@ export default function AdminFormsPage() {
       {/* Email Modal */}
       {emailModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center px-4">
-          <div className="w-full max-w-md bg-white rounded-lg shadow-xl border border-slate-200 overflow-hidden">
-            <div className="p-6 bg-slate-900">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-strong border-2 border-slate-200 overflow-hidden">
+            <div className="p-6 bg-slate-900 rounded-t-2xl">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Mail size={20} />
+                <Mail size={20} className="text-blue-400" />
                 Enviar Formulário para Usuário
               </h2>
+              <p className="text-sm text-slate-300 mt-1">O usuário receberá o formulário por e-mail para preenchimento</p>
             </div>
             <div className="p-6">
-              <p className="text-sm text-slate-600 mb-4">
-                O usuário receberá o formulário por e-mail para preenchimento
-              </p>
               <label className="block text-sm font-bold text-slate-700 mb-1.5">
                 E-mail do Usuário
               </label>
@@ -544,7 +550,7 @@ export default function AdminFormsPage() {
                 placeholder="usuario@empresa.com"
                 disabled={!!sendingFormId}
                 autoFocus
-                className="w-full h-11 px-4 text-sm bg-white border-2 border-slate-200 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 disabled:opacity-50"
+                className="w-full h-11 px-4 text-sm bg-white border-2 border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 disabled:opacity-50"
               />
             </div>
             <div className="p-6 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2">
@@ -556,7 +562,7 @@ export default function AdminFormsPage() {
                   setSelectedFormId(null);
                 }}
                 disabled={!!sendingFormId}
-                className="px-4 py-2.5 rounded-lg font-bold border-2 border-slate-200 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-50 transition-colors"
+                className="px-4 py-2.5 rounded-xl font-bold border-2 border-slate-200 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-50 transition-colors"
               >
                 Cancelar
               </button>
@@ -564,7 +570,7 @@ export default function AdminFormsPage() {
                 type="button"
                 onClick={() => void confirmSendToUser()}
                 disabled={!!sendingFormId || !emailToSend.trim()}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {sendingFormId ? (
                   <>
@@ -586,18 +592,21 @@ export default function AdminFormsPage() {
       {/* Delete Confirmation Modal */}
       {deleteModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center px-4">
-          <div className="w-full max-w-md bg-white rounded-lg shadow-xl border border-slate-200 overflow-hidden">
-            <div className="p-6 bg-slate-900">
-              <h2 className="text-lg font-bold text-white">Excluir formulário</h2>
-              <p className="text-sm text-slate-200 mt-1">Esta ação é permanente e não pode ser desfeita.</p>
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-strong border-2 border-slate-200 overflow-hidden">
+            <div className="p-6 bg-slate-900 rounded-t-2xl">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <Trash2 size={20} className="text-red-400" />
+                Excluir formulário
+              </h2>
+              <p className="text-sm text-slate-300 mt-1">O formulário será removido da sua lista.</p>
             </div>
             <div className="p-6">
               <p className="text-slate-700 mb-2">Você está prestes a excluir o formulário:</p>
               <p className="font-bold text-slate-900 text-lg mb-4 wrap-break-word">{selectedFormName || '—'}</p>
 
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-800 font-semibold">
-                  Atenção: todos os dados relacionados a este formulário serão removidos permanentemente.
+              <div className="p-4 bg-amber-50 border-2 border-amber-200 rounded-xl">
+                <p className="text-sm text-amber-800 font-semibold">
+                  Nota: O formulário será removido apenas da sua lista. Se já foi enviado ao usuário, ele ainda poderá acessá-lo.
                 </p>
               </div>
             </div>
@@ -610,7 +619,7 @@ export default function AdminFormsPage() {
                   setSelectedFormName('');
                 }}
                 disabled={!!deletingFormId}
-                className="px-4 py-2.5 rounded-lg font-bold border-2 border-slate-200 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-50 transition-colors"
+                className="px-4 py-2.5 rounded-xl font-bold border-2 border-slate-200 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-50 transition-colors"
               >
                 Cancelar
               </button>
@@ -618,7 +627,7 @@ export default function AdminFormsPage() {
                 type="button"
                 onClick={() => void confirmDelete()}
                 disabled={!!deletingFormId}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {deletingFormId ? (
                   <>
@@ -641,11 +650,14 @@ export default function AdminFormsPage() {
       {/* Modal de Envio por Email */}
       {emailModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center px-4">
-          <div className="w-full max-w-2xl bg-white rounded-lg shadow-xl border border-slate-200 overflow-hidden">
+          <div className="w-full max-w-2xl bg-white rounded-2xl shadow-strong border-2 border-slate-200 overflow-hidden">
             <div className="max-h-[90vh] overflow-y-auto">
-              <div className="p-6 bg-slate-900">
-                <h2 className="text-lg font-bold text-white">Enviar Formulário</h2>
-                <p className="text-sm text-slate-200 mt-1">Defina o e-mail do usuário e os textos de ajuda dos popups.</p>
+              <div className="p-6 bg-slate-900 rounded-t-2xl">
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Mail size={20} className="text-blue-400" />
+                  Enviar Formulário
+                </h2>
+                <p className="text-sm text-slate-300 mt-1">Defina o e-mail do usuário e os textos de ajuda dos popups.</p>
               </div>
 
               <div className="p-6 space-y-4">
@@ -656,64 +668,64 @@ export default function AdminFormsPage() {
                   value={emailToSend}
                   onChange={(e) => setEmailToSend(e.target.value)}
                   placeholder="usuario@empresa.com"
-                  className="w-full h-11 px-4 text-sm bg-white border-2 border-slate-200 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 disabled:opacity-50"
+                  className="w-full h-11 px-4 text-sm bg-white border-2 border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 disabled:opacity-50"
                   disabled={!!sendingFormId}
                   autoFocus
                 />
               </div>
 
               <div className="pt-2">
-                <p className="text-xs font-bold text-slate-600 uppercase mb-2">Textos dos popups de ajuda (Usuário)</p>
+                <p className="text-xs font-bold text-slate-600 uppercase mb-3">Textos dos popups de ajuda (Usuário)</p>
                 {loadingHelpTexts ? (
                   <div className="flex items-center gap-2 text-sm text-slate-600">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Carregando textos...
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-600 mb-1">Qualificação do Avaliador</label>
+                      <label className="block text-xs font-bold text-slate-600 mb-1.5">Qualificação do Avaliador</label>
                       <textarea
                         value={helpTexts.qualificacao ?? ''}
                         onChange={(e) => setHelpTexts((prev) => ({ ...prev, qualificacao: e.target.value }))}
                         rows={5}
-                        className="w-full px-3 py-2 text-sm bg-white border-2 border-slate-200 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 disabled:opacity-50"
+                        className="w-full px-3 py-2 text-sm bg-white border-2 border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 disabled:opacity-50"
                         disabled={!!sendingFormId}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-600 mb-1">Metodologia - Resultado da Avaliação</label>
+                      <label className="block text-xs font-bold text-slate-600 mb-1.5">Metodologia - Resultado da Avaliação</label>
                       <textarea
                         value={helpTexts.metodologia ?? ''}
                         onChange={(e) => setHelpTexts((prev) => ({ ...prev, metodologia: e.target.value }))}
                         rows={4}
-                        className="w-full px-3 py-2 text-sm bg-white border-2 border-slate-200 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 disabled:opacity-50"
+                        className="w-full px-3 py-2 text-sm bg-white border-2 border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 disabled:opacity-50"
                         disabled={!!sendingFormId}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-600 mb-1">Recomendações</label>
+                      <label className="block text-xs font-bold text-slate-600 mb-1.5">Recomendações</label>
                       <textarea
                         value={helpTexts.recomendacoes ?? ''}
                         onChange={(e) => setHelpTexts((prev) => ({ ...prev, recomendacoes: e.target.value }))}
                         rows={4}
-                        className="w-full px-3 py-2 text-sm bg-white border-2 border-slate-200 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 disabled:opacity-50"
+                        className="w-full px-3 py-2 text-sm bg-white border-2 border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 disabled:opacity-50"
                         disabled={!!sendingFormId}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-600 mb-1">Plano de Ação (NAO_PLANO)</label>
+                      <label className="block text-xs font-bold text-slate-600 mb-1.5">Plano de Ação (NAO_PLANO)</label>
                       <textarea
                         value={helpTexts.planoAcao ?? ''}
                         onChange={(e) => setHelpTexts((prev) => ({ ...prev, planoAcao: e.target.value }))}
                         rows={5}
-                        className="w-full px-3 py-2 text-sm bg-white border-2 border-slate-200 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 disabled:opacity-50"
+                        className="w-full px-3 py-2 text-sm bg-white border-2 border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 disabled:opacity-50"
                         disabled={!!sendingFormId}
                       />
                     </div>
                   </div>
                 )}
-                <p className="text-xs text-slate-500 mt-2">Dica: quebre linhas para separar parágrafos.</p>
+                <p className="text-xs text-slate-500 mt-3">Dica: quebre linhas para separar parágrafos.</p>
               </div>
             </div>
 
@@ -726,7 +738,7 @@ export default function AdminFormsPage() {
                     setSelectedFormId(null);
                     setHelpTexts(defaultHelpTexts);
                   }}
-                  className="px-4 py-2.5 rounded-lg font-bold border-2 border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-colors"
+                  className="px-4 py-2.5 rounded-xl font-bold border-2 border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-colors"
                   disabled={!!sendingFormId}
                 >
                   Cancelar
@@ -734,7 +746,7 @@ export default function AdminFormsPage() {
                 <button
                   type="button"
                   onClick={() => void confirmSendToUser()}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   disabled={!!sendingFormId || loadingHelpTexts}
                 >
                   {sendingFormId ? 'Enviando...' : 'Enviar Formulário'}

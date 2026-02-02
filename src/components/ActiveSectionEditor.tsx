@@ -64,8 +64,12 @@ export const ActiveSectionEditor: React.FC<{
                   onChange={(e) => onUpdateSection({ customLabel: e.target.value })}
                   placeholder="Descreva o item personalizado"
                   disabled={!canEdit}
+                  maxLength={100}
                   className="w-full h-11 px-3 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-50 transition-colors"
                 />
+                <div className="mt-1 text-xs text-slate-500 text-right" aria-live="polite">
+                  {(activeSection.customLabel?.length ?? 0)}/100
+                </div>
               </div>
             )}
           </div>
@@ -136,10 +140,10 @@ export const ActiveSectionEditor: React.FC<{
           </div>
         </div>
 
-        {/* Description */}
+        
         <div className="mt-6">
           <label htmlFor="section-description" className="block text-sm font-semibold text-slate-700 mb-2">
-            Descrição <span className="font-normal text-slate-500">(máx. 600 caracteres)</span>
+            Descrição do Item Avaliado
           </label>
           <textarea
             id="section-description"
@@ -152,14 +156,14 @@ export const ActiveSectionEditor: React.FC<{
             className="w-full px-3 py-3 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-50 resize-none transition-colors"
           />
           <div className="flex justify-between mt-2">
-            <span className="text-xs text-slate-500">Essas informações são visíveis apenas para administradores</span>
+            <span className="text-xs text-slate-500">A descrição do Item é visível apenas para administradores.</span>
             <span className="text-xs font-medium text-slate-600" aria-live="polite">
               {activeSection.descricao?.length || 0}/600
             </span>
           </div>
         </div>
 
-        {/* Warning */}
+        
         {!canEdit && (
           <div className="mt-6 flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg" role="alert">
             <AlertTriangle size={20} className="text-amber-600 shrink-0 mt-0.5" aria-hidden="true" />

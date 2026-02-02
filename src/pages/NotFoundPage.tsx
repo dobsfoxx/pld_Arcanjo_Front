@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
+import { AlertTriangle, Home, FileText, ArrowLeft } from 'lucide-react';
 import AppFooter from '../components/AppFooter';
 import AppHeader from '../components/AppHeader';
 import { useAuth } from '../contexts/useAuth';
@@ -18,42 +19,67 @@ export default function NotFoundPage() {
         showUserMenu={!!user}
       />
 
-      <main className="flex-1 p-6">
-        <div className="mx-auto w-full max-w-2xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-medium text-slate-500">Erro 404</p>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
-            Não encontramos esta página
-          </h1>
-          <p className="mt-3 text-sm leading-relaxed text-slate-600">
-            O endereço pode estar incorreto, ter sido removido ou você pode ter chegado aqui por um link antigo.
-          </p>
+      <main className="flex-1 flex items-center justify-center p-6">
+        <div className="mx-auto w-full max-w-lg text-center">
+          {/* Error Illustration */}
+          <div className="mb-8">
+            <div className="inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-amber-100 border-2 border-amber-200 shadow-medium mb-6">
+              <AlertTriangle size={48} className="text-amber-600" />
+            </div>
+            <div className="inline-block px-4 py-1.5 rounded-full bg-amber-100 border border-amber-200 text-amber-700 text-sm font-semibold mb-4">
+              Erro 404
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 mb-3">
+              Página não encontrada
+            </h1>
+            <p className="text-base text-slate-600 max-w-sm mx-auto leading-relaxed">
+              O endereço pode estar incorreto, ter sido removido ou você pode ter chegado aqui por um link antigo.
+            </p>
+          </div>
 
-          <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm font-semibold text-slate-900">Sugestões rápidas</p>
-            <ul className="mt-2 list-disc pl-5 text-sm text-slate-700">
-              <li>Verifique se o link está correto.</li>
-              <li>Tente voltar e acessar pelo menu do sistema.</li>
-              <li>Se o erro persistir, pode ser uma rota ainda não disponível nesta versão.</li>
+          {/* Suggestions Card */}
+          <div className="bg-white rounded-2xl border-2 border-slate-200 shadow-soft p-6 mb-8 text-left">
+            <p className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+              <span className="w-6 h-6 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs">?</span>
+              Sugestões rápidas
+            </p>
+            <ul className="space-y-2.5 text-sm text-slate-600">
+              <li className="flex items-start gap-3">
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mt-2 shrink-0" />
+                <span>Verifique se o link está correto.</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mt-2 shrink-0" />
+                <span>Tente voltar e acessar pelo menu do sistema.</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mt-2 shrink-0" />
+                <span>Se o erro persistir, pode ser uma rota ainda não disponível nesta versão.</span>
+              </li>
             </ul>
           </div>
 
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          {/* Action Buttons */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
             <Link
               to={to}
-              className="inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white hover:bg-slate-800 shadow-medium hover:shadow-strong transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
             >
+              <ArrowLeft size={16} />
               {label}
             </Link>
             <Link
               to="/my-forms"
-              className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-soft transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
             >
+              <FileText size={16} />
               Meus formulários
             </Link>
             <Link
               to="/"
-              className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-soft transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
             >
+              <Home size={16} />
               Ir para home
             </Link>
           </div>

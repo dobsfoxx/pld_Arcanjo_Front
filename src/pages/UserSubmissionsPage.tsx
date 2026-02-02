@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   FileText, Save, ArrowLeft, AlertTriangle, Loader2, 
@@ -90,24 +90,24 @@ function MetadataModal({
 }: MetadataModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-lg shadow-xl border border-slate-200 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 rounded-t-lg">
+      <div className="bg-white rounded-2xl shadow-strong border-2 border-slate-200 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-slate-900 px-6 py-5 rounded-t-2xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-slate-700" />
+              <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                <Building2 className="w-5 h-5 text-blue-400" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-slate-900">Configurar Formulário</h2>
-                <p className="text-sm text-slate-500">Preencha as informações iniciais</p>
+                <h2 className="text-xl font-bold text-white">Configurar Formulário</h2>
+                <p className="text-sm text-slate-300">Preencha as informações iniciais</p>
               </div>
             </div>
             {metadataConfigured && (
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-slate-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
               >
-                <X size={20} className="text-slate-500" />
+                <X size={20} className="text-white" />
               </button>
             )}
           </div>
@@ -354,16 +354,16 @@ function MetadataModal({
           </div>
         </div>
 
-        <div className="sticky bottom-0 bg-white border-t border-slate-200 px-6 py-4 rounded-b-lg">
+        <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-6 py-4">
           <button
             onClick={onContinue}
             disabled={!canContinue}
-            className="w-full py-3 px-4 bg-slate-900 text-white font-medium rounded-lg hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3 px-4 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Continuar para o Formulário
           </button>
           {!canContinue && (
-            <p className="text-xs text-slate-500 mt-2">
+            <p className="text-xs text-slate-500 mt-2 text-center">
               Preencha os campos obrigatórios para continuar.
             </p>
           )}
@@ -382,14 +382,14 @@ type SimplePopupProps = {
 function SimplePopup({ title, onClose, children }: SimplePopupProps) {
   return (
     <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-lg shadow-xl border border-slate-200 max-w-lg w-full overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
-          <h3 className="text-lg font-bold text-slate-900">{title}</h3>
+      <div className="bg-white rounded-2xl shadow-strong border-2 border-slate-200 max-w-lg w-full overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 bg-slate-900 rounded-t-2xl">
+          <h3 className="text-lg font-bold text-white">{title}</h3>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
           >
-            <X size={20} className="text-slate-500" />
+            <X size={20} className="text-white" />
           </button>
         </div>
         <div className="p-6 text-sm text-slate-600 space-y-3">{children}</div>
@@ -631,6 +631,13 @@ export default function UserSubmissionsPage() {
   
   const [questionResponses, setQuestionResponses] = useState<Map<string, UserQuestionResponse>>(new Map());
   const [sectionResponses, setSectionResponses] = useState<Map<string, UserSectionResponse>>(new Map());
+  
+  // Refs para manter valores atuais acessíveis em closures (loadForm)
+  const questionResponsesRef = useRef(questionResponses);
+  const sectionResponsesRef = useRef(sectionResponses);
+  useEffect(() => { questionResponsesRef.current = questionResponses; }, [questionResponses]);
+  useEffect(() => { sectionResponsesRef.current = sectionResponses; }, [sectionResponses]);
+  
   const [touchedQuestions, setTouchedQuestions] = useState<Set<string>>(new Set());
   const [userHasSaved, setUserHasSaved] = useState(false);
   const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set());
@@ -646,7 +653,26 @@ export default function UserSubmissionsPage() {
   const [showRecomendacoesPopup, setShowRecomendacoesPopup] = useState(false);
   const [showNaoplanoPopup, setShowNaoplanoPopup] = useState(false);
   const [metadataConfigured, setMetadataConfigured] = useState(false);
-  const [reportFormat, setReportFormat] = useState<'DOCX' | 'PDF'>('DOCX');
+
+  const uploadedFilesRef = useRef<Map<string, Set<string>>>(new Map());
+  
+  // Ref para armazenar arquivos de forma persistente (não é afetado por re-renders)
+  const persistentFilesRef = useRef<{
+    sections: Map<string, File[]>;
+    questions: Map<string, Partial<UserQuestionResponse>>;
+  }>({
+    sections: new Map(),
+    questions: new Map(),
+  });
+  
+  const fileKey = (f: File) => `${f.name}-${f.size}-${f.lastModified}`;
+  const wasUploaded = (scope: string, f: File) =>
+    uploadedFilesRef.current.get(scope)?.has(fileKey(f)) ?? false;
+  const markUploaded = (scope: string, f: File) => {
+    const set = uploadedFilesRef.current.get(scope) ?? new Set<string>();
+    set.add(fileKey(f));
+    uploadedFilesRef.current.set(scope, set);
+  };
 
   const validateMetadata = (metadata: FormMetadata): { canContinue: boolean; errors: MetadataErrors } => {
     const errors: MetadataErrors = {};
@@ -736,7 +762,11 @@ export default function UserSubmissionsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const loadForm = async (opts?: { silent?: boolean; preserveActiveSection?: boolean }) => {
+  const loadForm = async (opts?: {
+    silent?: boolean;
+    preserveActiveSection?: boolean;
+    preserveUploads?: boolean;
+  }) => {
     if (!opts?.silent) setLoading(true);
     try {
       const res = await pldBuilderApi.getUserForm(id!);
@@ -774,9 +804,14 @@ export default function UserSubmissionsPage() {
       // Initialize section responses
       const initialSectionResponses = new Map<string, UserSectionResponse>();
       formData.sections.forEach((section: Section) => {
+        const prev = sectionResponsesRef.current.get(section.id);
+        const persistedFiles = persistentFilesRef.current.sections.get(section.id);
         initialSectionResponses.set(section.id, {
           hasNorma: section.hasNorma || false,
-          normaArquivo: [],
+          // Prioridade: 1) preserveUploads do state, 2) arquivos persistidos, 3) vazio
+          normaArquivo: opts?.preserveUploads 
+            ? (prev?.normaArquivo ?? persistedFiles ?? []) 
+            : (persistedFiles ?? []),
           normaReferencia: section.normaReferencia || '',
         });
       });
@@ -786,23 +821,37 @@ export default function UserSubmissionsPage() {
       const initialQuestionResponses = new Map<string, UserQuestionResponse>();
       formData.sections.forEach((section: Section) => {
         section.questions.forEach((q: Question) => {
+          const prevQ = questionResponsesRef.current.get(q.id);
+          const persistedQ = persistentFilesRef.current.questions.get(q.id);
           initialQuestionResponses.set(q.id, {
             aplicavel: q.aplicavel !== false, // Default to true if not explicitly false
             resposta: q.resposta || '',
             respostaTexto: q.respostaTexto || '',
-            respostaArquivo: [],
+            respostaArquivo: opts?.preserveUploads 
+              ? (prevQ?.respostaArquivo ?? (persistedQ?.respostaArquivo as File[]) ?? []) 
+              : ((persistedQ?.respostaArquivo as File[]) ?? []),
             deficienciaTexto: q.deficienciaTexto || '',
-            deficienciaArquivo: [],
+            deficienciaArquivo: opts?.preserveUploads 
+              ? (prevQ?.deficienciaArquivo ?? (persistedQ?.deficienciaArquivo as File[]) ?? []) 
+              : ((persistedQ?.deficienciaArquivo as File[]) ?? []),
             recomendacaoTexto: q.recomendacaoTexto || '',
             testStatus: q.testStatus || '',
             testDescription: q.testDescription || '',
-            requisicaoArquivo: [],
+            requisicaoArquivo: opts?.preserveUploads 
+              ? (prevQ?.requisicaoArquivo ?? (persistedQ?.requisicaoArquivo as File[]) ?? []) 
+              : ((persistedQ?.requisicaoArquivo as File[]) ?? []),
             requisicaoRef: q.requisicaoRef || '',
-            respostaTesteArquivo: [],
+            respostaTesteArquivo: opts?.preserveUploads 
+              ? (prevQ?.respostaTesteArquivo ?? (persistedQ?.respostaTesteArquivo as File[]) ?? []) 
+              : ((persistedQ?.respostaTesteArquivo as File[]) ?? []),
             respostaTesteRef: q.respostaTesteRef || '',
-            amostraArquivo: [],
+            amostraArquivo: opts?.preserveUploads 
+              ? (prevQ?.amostraArquivo ?? (persistedQ?.amostraArquivo as File[]) ?? []) 
+              : ((persistedQ?.amostraArquivo as File[]) ?? []),
             amostraRef: q.amostraRef || '',
-            evidenciasArquivo: [],
+            evidenciasArquivo: opts?.preserveUploads 
+              ? (prevQ?.evidenciasArquivo ?? (persistedQ?.evidenciasArquivo as File[]) ?? []) 
+              : ((persistedQ?.evidenciasArquivo as File[]) ?? []),
             evidenciasRef: q.evidenciasRef || '',
             actionOrigem: q.actionOrigem || '',
             actionResponsavel: q.actionResponsavel || '',
@@ -828,6 +877,12 @@ export default function UserSubmissionsPage() {
     field: keyof UserQuestionResponse,
     value: string | File | File[] | null | boolean
   ) => {
+    // Persistir arquivos no ref
+    if (Array.isArray(value) && value.length > 0 && value[0] instanceof File) {
+      const current = persistentFilesRef.current.questions.get(questionId) || {};
+      persistentFilesRef.current.questions.set(questionId, { ...current, [field]: value });
+    }
+    
     setQuestionResponses(prev => {
       const newMap = new Map(prev);
       const current = newMap.get(questionId) || { ...defaultQuestionResponse };
@@ -846,6 +901,11 @@ export default function UserSubmissionsPage() {
     field: keyof UserSectionResponse,
     value: boolean | File | File[] | null | string
   ) => {
+    // Persistir arquivos de norma no ref
+    if (field === 'normaArquivo' && Array.isArray(value)) {
+      persistentFilesRef.current.sections.set(sectionId, value as File[]);
+    }
+    
     setSectionResponses(prev => {
       const newMap = new Map(prev);
       const current = newMap.get(sectionId) || { ...defaultSectionResponse };
@@ -878,12 +938,14 @@ export default function UserSubmissionsPage() {
     for (const [sectionId, sectionData] of sectionResponses.entries()) {
       if (sectionData.normaArquivo && sectionData.normaArquivo.length > 0) {
         for (const f of sectionData.normaArquivo.slice(0, 5)) {
+          const scope = `sec:${sectionId}:NORMA`;
+          if (wasUploaded(scope, f)) continue;
           await pldBuilderApi.uploadUserFormAttachment(id, f, 'NORMA', {
             sectionId,
             referenceText: sectionData.normaReferencia,
           });
+          markUploaded(scope, f);
         }
-        updateSectionResponse(sectionId, 'normaArquivo', []);
       }
     }
 
@@ -891,56 +953,68 @@ export default function UserSubmissionsPage() {
     for (const [questionId, qData] of questionResponses.entries()) {
       if (qData.requisicaoArquivo && qData.requisicaoArquivo.length > 0) {
         for (const f of qData.requisicaoArquivo.slice(0, 5)) {
+          const scope = `q:${questionId}:requisicao`;
+          if (wasUploaded(scope, f)) continue;
           await pldBuilderApi.uploadUserFormAttachment(id, f, 'TEST_REQUISICAO', {
             questionId,
             referenceText: qData.requisicaoRef,
           });
+          markUploaded(scope, f);
         }
-        updateQuestionResponse(questionId, 'requisicaoArquivo', []);
       }
 
       if (qData.respostaTesteArquivo && qData.respostaTesteArquivo.length > 0) {
         for (const f of qData.respostaTesteArquivo.slice(0, 5)) {
+          const scope = `q:${questionId}:respostaTeste`;
+          if (wasUploaded(scope, f)) continue;
           await pldBuilderApi.uploadUserFormAttachment(id, f, 'TEST_RESPOSTA', {
             questionId,
             referenceText: qData.respostaTesteRef,
           });
+          markUploaded(scope, f);
         }
-        updateQuestionResponse(questionId, 'respostaTesteArquivo', []);
       }
 
       if (qData.amostraArquivo && qData.amostraArquivo.length > 0) {
         for (const f of qData.amostraArquivo.slice(0, 5)) {
+          const scope = `q:${questionId}:amostra`;
+          if (wasUploaded(scope, f)) continue;
           await pldBuilderApi.uploadUserFormAttachment(id, f, 'TEST_AMOSTRA', {
             questionId,
             referenceText: qData.amostraRef,
           });
+          markUploaded(scope, f);
         }
-        updateQuestionResponse(questionId, 'amostraArquivo', []);
       }
 
       if (qData.evidenciasArquivo && qData.evidenciasArquivo.length > 0) {
         for (const file of qData.evidenciasArquivo.slice(0, 5)) {
+          const scope = `q:${questionId}:evidencias`;
+          if (wasUploaded(scope, file)) continue;
           await pldBuilderApi.uploadUserFormAttachment(id, file, 'TEST_EVIDENCIAS', {
             questionId,
             referenceText: qData.evidenciasRef,
           });
+          markUploaded(scope, file);
         }
-        updateQuestionResponse(questionId, 'evidenciasArquivo', []);
       }
 
       if (qData.respostaArquivo && qData.respostaArquivo.length > 0) {
         for (const f of qData.respostaArquivo.slice(0, 5)) {
+          const scope = `q:${questionId}:resposta`;
+          if (wasUploaded(scope, f)) continue;
           await pldBuilderApi.uploadUserFormAttachment(id, f, 'RESPOSTA', { questionId });
+          markUploaded(scope, f);
         }
-        updateQuestionResponse(questionId, 'respostaArquivo', []);
       }
 
       if (qData.deficienciaArquivo && qData.deficienciaArquivo.length > 0) {
         for (const f of qData.deficienciaArquivo.slice(0, 5)) {
+          const scope = `q:${questionId}:deficiencia`;
+          if (wasUploaded(scope, f)) continue;
           await pldBuilderApi.uploadUserFormAttachment(id, f, 'DEFICIENCIA', { questionId });
+          markUploaded(scope, f);
         }
-        updateQuestionResponse(questionId, 'deficienciaArquivo', []);
       }
     }
   };
@@ -988,7 +1062,6 @@ export default function UserSubmissionsPage() {
       }));
 
       await pldBuilderApi.saveUserFormResponses(id!, { answers, sections, metadata: formMetadata });
-      await loadForm({ silent: true, preserveActiveSection: true });
       setUserHasSaved(true);
       setTouchedQuestions(new Set());
       toast.success('Respostas salvas com sucesso!');
@@ -1062,6 +1135,7 @@ export default function UserSubmissionsPage() {
       }));
 
       await pldBuilderApi.saveUserFormResponses(id!, { answers, sections, metadata: formMetadata });
+      // NÃO recarregar o formulário - preserva todos os arquivos de upload na UI
       setUserHasSaved(true);
       setTouchedQuestions(new Set());
 
@@ -1085,9 +1159,9 @@ export default function UserSubmissionsPage() {
           .slice(0, 80) || 'relatorio';
 
       toast.loading('Gerando relatório...', { id: 'user-report' });
-      const res = await reportApi.generateMyBuilderFormReport(id!, reportFormat === 'DOCX' ? 'DOCX' : 'PDF');
+      const res = await reportApi.generateMyBuilderFormReport(id!, 'DOCX');
 
-      const ext = reportFormat === 'DOCX' ? 'docx' : 'pdf';
+      const ext = 'docx';
       const filename = `${safeFilenameBase(form?.name || `relatorio-${id}`)}.${ext}`;
 
       // Prefer signedUrl
@@ -1170,7 +1244,7 @@ export default function UserSubmissionsPage() {
       setUserHasSaved(true);
       setTouchedQuestions(new Set());
       await pldBuilderApi.completeUserForm(id!);
-      await loadForm({ silent: true, preserveActiveSection: true });
+      // NÃO recarregar - redireciona para outra página
       toast.success('Formulário concluído com sucesso!');
     } catch (error: unknown) {
       console.error('Erro ao concluir formulário:', error);
@@ -1183,6 +1257,12 @@ export default function UserSubmissionsPage() {
   
 
   const canEdit = form?.status === 'SENT_TO_USER' || form?.status === 'IN_PROGRESS';
+
+  const renderCharCount = (value: string | null | undefined, max: number) => (
+    <p className="text-xs text-slate-400 mt-1 text-right">
+      {(value || '').length}/{max} caracteres
+    </p>
+  );
 
   const activeSection = useMemo(() => {
     return form?.sections.find(s => s.id === activeSectionId) || form?.sections[0];
@@ -1223,7 +1303,7 @@ export default function UserSubmissionsPage() {
         : 0;
 
     return { ...totals, progress };
-  }, [form, questionResponses]);
+  }, [form, questionResponses, isQuestionAnswered]);
 
   const questionIndexById = useMemo(() => {
     const map = new Map<string, number>();
@@ -1249,7 +1329,7 @@ export default function UserSubmissionsPage() {
     });
 
     return stats;
-  }, [activeSection, questionResponses]);
+  }, [activeSection, questionResponses, isQuestionAnswered]);
 
   const filteredQuestions = useMemo(() => {
     const all = activeSection?.questions ?? [];
@@ -1278,7 +1358,7 @@ export default function UserSubmissionsPage() {
       default:
         return all;
     }
-  }, [activeSection, questionFilter, questionResponses]);
+  }, [activeSection, questionFilter, questionResponses, isQuestionAnswered]);
 
   const filterBtnClass = (active: boolean) =>
     active
@@ -1397,16 +1477,6 @@ export default function UserSubmissionsPage() {
               <span>Informações</span>
             </button>
 
-            <select
-              value={reportFormat}
-              onChange={(e) => setReportFormat(e.target.value as 'DOCX' | 'PDF')}
-              className="hidden md:inline-block h-9 px-3 text-sm bg-white border border-slate-300 rounded-lg text-slate-700 hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
-              aria-label="Formato do relatório"
-            >
-              <option value="DOCX">DOCX</option>
-              <option value="PDF">PDF</option>
-            </select>
-
             <button
               type="button"
               onClick={() => void handleGenerateReport()}
@@ -1415,7 +1485,7 @@ export default function UserSubmissionsPage() {
               title="Gerar Relatório"
             >
               <Download size={16} />
-              <span>Gerar</span>
+              <span>Gerar relatório</span>
             </button>
 
             <button
@@ -1472,7 +1542,7 @@ export default function UserSubmissionsPage() {
             <div className="flex items-center gap-3 p-4 mb-6 bg-amber-50 border border-amber-200 rounded-xl">
               <AlertTriangle size={20} className="text-amber-600 shrink-0" />
               <p className="text-sm text-amber-800">
-                <strong>Atenção:</strong> Este formulário está em revisão ou já foi aprovado. Você não pode mais editá-lo.
+                <strong>Atenção:</strong> Este formulário já foi concluído. Você não pode mais editá-lo.
               </p>
             </div>
           )}
@@ -1770,7 +1840,7 @@ export default function UserSubmissionsPage() {
                               {/* Seção de Teste - Editável */}
                               <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
                                 <h5 className="text-sm font-bold text-slate-800 mb-4">
-                                  📋 Informações do Teste
+                                   Informações do Teste
                                 </h5>
                                 
                                 <div className="mb-4">
@@ -1824,6 +1894,7 @@ export default function UserSubmissionsPage() {
                                         maxLength={300}
                                         className="w-full px-3 py-3 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500 resize-none transition-colors"
                                       />
+                                      {renderCharCount(qResponse.testDescription, 300)}
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2033,6 +2104,7 @@ export default function UserSubmissionsPage() {
                                       maxLength={600}
                                       className="w-full px-3 py-3 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500 resize-none transition-colors"
                                     />
+                                    {renderCharCount(qResponse.actionComentarios, 600)}
                                   </div>
                                 )}
                               </div>
@@ -2040,7 +2112,7 @@ export default function UserSubmissionsPage() {
                               {/* Seção de Resposta da Questão */}
                               <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
                                 <h5 className="text-sm font-bold text-slate-800 mb-4">
-                                  ✅ Resposta da Questão
+                                   Resposta da Questão
                                 </h5>
 
                                 <div className="space-y-4">
@@ -2092,6 +2164,7 @@ export default function UserSubmissionsPage() {
                                       maxLength={500}
                                       className="w-full px-3 py-3 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500 resize-none transition-colors"
                                     />
+                                    {renderCharCount(qResponse.respostaTexto, 500)}
                                   </div>
 
                                   {/* Upload de arquivo de resposta */}
@@ -2144,6 +2217,7 @@ export default function UserSubmissionsPage() {
                                           maxLength={500}
                                           className="w-full px-3 py-3 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500 resize-none transition-colors"
                                         />
+                                        {renderCharCount(qResponse.deficienciaTexto, 500)}
                                         <div className="mt-2">
                                           <FileUpload
                                             label="Arquivo comprobatório"
@@ -2185,6 +2259,7 @@ export default function UserSubmissionsPage() {
                                             disabled={false}
                                             className="w-full px-3 py-3 text-sm bg-white text-slate-900 border border-slate-300 rounded-lg placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500 resize-none transition-colors"
                                           />
+                                          {renderCharCount(qResponse.recomendacaoTexto, 500)}
                                         </div>
                                       )}
                                     </div>

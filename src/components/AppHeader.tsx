@@ -24,34 +24,45 @@ export default function AppHeader({ title, subtitle, leading, actions, showUserM
   }, [user])
 
   return (
-    <header className="sticky top-0 z-30 bg-slate-900 shadow-lg">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-3 min-w-0">
+    <header className="sticky top-0 z-30 bg-slate-900 shadow-lg backdrop-blur-sm">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+        {/* Logo e título */}
+        <div className="flex items-center gap-4 min-w-0">
           {leading}
-          <div className="bg-slate-800 p-2 rounded-lg flex items-center justify-center shrink-0">
-            <ShieldCheck size={22} className="text-white" aria-hidden="true" />
+          <div className="relative">
+            <div className="absolute inset-0 bg-blue-500/20 rounded-xl blur-lg" />
+            <div className="relative bg-slate-700 p-2.5 rounded-xl border border-slate-600/50 shadow-lg">
+              <ShieldCheck size={22} className="text-blue-400" aria-hidden="true" />
+            </div>
           </div>
           <div className="min-w-0">
-            <h1 className="text-base sm:text-lg font-bold text-white tracking-tight truncate">{title}</h1>
-            {subtitle ? <p className="text-xs text-slate-300 truncate">{subtitle}</p> : null}
+            <h1 className="text-base sm:text-lg font-bold text-white tracking-tight truncate leading-tight">
+              {title}
+            </h1>
+            {subtitle && (
+              <p className="text-xs text-slate-400 truncate mt-0.5 font-medium">{subtitle}</p>
+            )}
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          {user ? (
+        {/* Ações */}
+        <nav className="flex items-center gap-2 shrink-0" role="navigation" aria-label="Navegação principal">
+          {user && (
             <button
               type="button"
               onClick={() => navigate(formsPath)}
-              className="inline-flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-300 
+                hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200
+                focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
               title="Voltar para formulários"
             >
-              <FolderOpen size={16} aria-hidden="true" />
+              <FolderOpen size={18} aria-hidden="true" />
               <span className="hidden sm:inline">Formulários</span>
             </button>
-          ) : null}
+          )}
           {actions}
-          {showUserMenu ? <UserMenu /> : null}
-        </div>
+          {showUserMenu && <UserMenu />}
+        </nav>
       </div>
     </header>
   )

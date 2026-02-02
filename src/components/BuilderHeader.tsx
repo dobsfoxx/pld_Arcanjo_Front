@@ -1,31 +1,32 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Download, Menu, ShieldCheck, FolderOpen, Check, Send } from 'lucide-react';
+import { Download, Menu, ShieldCheck, FolderOpen, Check, Send, Settings } from 'lucide-react';
 import UserMenu from './UserMenu';
 
+// Props do componente BuilderHeader
 export const BuilderHeader: React.FC<{
-  canEdit: boolean;
-  reportFormat: 'DOCX' | 'PDF';
-  onReportFormatChange: (format: 'DOCX' | 'PDF') => void;
-  onGenerateReport: () => void;
-  onConcludeReport: () => void;
-  onSendForm: () => void;
-  onOpenAssignments?: () => void;
-  onOpenForms?: () => void;
-  saving: boolean;
-  concluding: boolean;
-  sending: boolean;
-  mobileMenuOpen: boolean;
-  onToggleMobileMenu: () => void;
-  customTitle?: string;
-  customSubtitle?: string;
+  canEdit: boolean;                     // Usuário tem permissão para editar
+  onGenerateReport: () => void;         // Callback para gerar relatório PDF
+  onConcludeReport: () => void;         // Callback para concluir formulário
+  onSendForm: () => void;               // Callback para enviar formulário
+  onOpenConfig: () => void;             // Callback para abrir configuração
+  onOpenAssignments?: () => void;       // Callback para abrir atribuições
+  onOpenForms?: () => void;             // Callback para listar formulários
+  saving: boolean;                       // Indicador de salvamento em andamento
+  concluding: boolean;                   // Indicador de conclusão em andamento
+  sending: boolean;                      // Indicador de envio em andamento
+  mobileMenuOpen: boolean;              // Estado do menu mobile
+  onToggleMobileMenu: () => void;       // Toggle do menu mobile
+  customTitle?: string;                  // Título customizado (opcional)
+  customSubtitle?: string;               // Subtítulo customizado (opcional)
+  configBadge?: boolean;                 // Mostra indicador visual no botão de config
 }> = ({
   canEdit,
-  reportFormat,
-  onReportFormatChange,
   onGenerateReport,
   onConcludeReport,
   onSendForm,
+  onOpenConfig,
   saving,
   concluding,
   sending,
@@ -33,13 +34,14 @@ export const BuilderHeader: React.FC<{
   onToggleMobileMenu,
   customTitle,
   customSubtitle,
+  configBadge,
 }) => {
   const navigate = useNavigate();
 
   return (
-    <header className="sticky top-0 z-30 bg-slate-900 text-white border-b border-slate-800 shadow-lg">
+    <header className="sticky top-0 z-30 bg-slate-900 text-white border-b border-slate-800 shadow-sm ">
       <div className="flex items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8 max-w-[1920px] mx-auto">
-        {/* Logo and Title */}
+        
         <div className="flex items-center gap-3">
           <div className="bg-slate-800 p-2 rounded-lg flex items-center justify-center">
             <ShieldCheck size={22} className="text-white" aria-hidden="true" />
@@ -67,6 +69,20 @@ export const BuilderHeader: React.FC<{
 
           {canEdit && (
             <>
+              {/* Config button */}
+              <button
+                type="button"
+                onClick={onOpenConfig}
+                className="relative inline-flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-slate-700 focus:ring-offset-2 focus:ring-offset-slate-900"
+                aria-label="Configurações do formulário"
+                title="Configurações"
+              >
+                <Settings size={16} aria-hidden="true" />
+                <span className="hidden lg:inline">Configurações</span>
+                {configBadge && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-amber-500 rounded-full" />
+                )}
+              </button>
 
               <button
                 type="button"
@@ -77,20 +93,8 @@ export const BuilderHeader: React.FC<{
                 title="Gerar relatório"
               >
                 <Download size={16} aria-hidden="true" />
-                <span>{saving ? 'Gerando...' : 'Gerar'}</span>
+                <span>{saving ? 'Gerando...' : 'Gerar Relatório'}</span>
               </button>
-
-              {/* Report format selector */}
-              <select
-                value={reportFormat}
-                onChange={(e) => onReportFormatChange(e.target.value as 'DOCX' | 'PDF')}
-                disabled={saving || concluding}
-                aria-label="Formato do relatório"
-                className="h-9 px-3 text-xs font-medium bg-slate-900 border border-slate-700 rounded-lg text-slate-200 hover:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-700 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 cursor-pointer transition-colors"
-              >
-                <option value="DOCX">DOCX</option>
-                <option value="PDF">PDF</option>
-              </select>
 
               {/* Conclude button */}
               <button

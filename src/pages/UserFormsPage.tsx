@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   FileText, Eye, Loader2, ChevronLeft, ChevronRight, 
-  CheckCircle, Clock, Download
+  CheckCircle, Clock, Download, Inbox, Trash2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/useAuth';
@@ -31,13 +31,7 @@ const STATUS_LABELS: Record<Form['status'], string> = {
 const STATUS_COLORS: Record<Form['status'], string> = {
   SENT_TO_USER: 'bg-slate-100 text-slate-700 border-slate-300',
   IN_PROGRESS: 'bg-amber-100 text-amber-700 border-amber-300',
-  COMPLETED: 'bg-slate-100 text-slate-700 border-slate-300',
-};
-
-const STATUS_ICONS: Record<Form['status'], React.ReactNode> = {
-  SENT_TO_USER: <Clock size={14} />,
-  IN_PROGRESS: <Clock size={14} />,
-  COMPLETED: <CheckCircle size={14} />,
+  COMPLETED: 'bg-emerald-100 text-emerald-700 border-emerald-300',
 };
 
 const ITEMS_PER_PAGE = 10;
@@ -48,6 +42,10 @@ export default function UserFormsPage() {
   const [forms, setForms] = useState<Form[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [deletingFormId, setDeletingFormId] = useState<string | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
+  const [selectedFormName, setSelectedFormName] = useState<string>('');
 
   // Paginação
   const totalPages = Math.ceil(forms.length / ITEMS_PER_PAGE);
@@ -101,6 +99,31 @@ export default function UserFormsPage() {
     navigate(`/forms/${formId}`);
   };
 
+  const handleDeleteClick = (form: Form) => {
+    setSelectedFormId(form.id);
+    setSelectedFormName(form.name);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedFormId) return;
+
+    setDeletingFormId(selectedFormId);
+    try {
+      await pldBuilderApi.deleteUserForm(selectedFormId);
+      toast.success('Formulário removido com sucesso!');
+      setDeleteModalOpen(false);
+      setSelectedFormId(null);
+      setSelectedFormName('');
+      loadForms();
+    } catch (error: unknown) {
+      console.error('Erro ao remover formulário:', error);
+      toast.error(getToastErrorMessage(error, 'Erro ao remover formulário'));
+    } finally {
+      setDeletingFormId(null);
+    }
+  };
+
   const handleDownloadReport = async (formId: string, formName?: string) => {
     try {
       const downloadBlob = (blob: Blob, filename: string) => {
@@ -123,9 +146,9 @@ export default function UserFormsPage() {
           .slice(0, 80) || 'relatorio';
 
       toast.loading('Gerando relatório...', { id: `report-${formId}` });
-      const res = await reportApi.generateMyBuilderFormReport(formId, 'PDF');
+      const res = await reportApi.generateMyBuilderFormReport(formId, 'DOCX');
 
-      const filename = `${safeFilenameBase(formName || `relatorio-${formId}`)}.pdf`;
+      const filename = `${safeFilenameBase(formName || `relatorio-${formId}`)}.docx`;
 
       if (res.data?.signedUrl && /^https?:\/\//i.test(res.data.signedUrl)) {
         const fetchRes = await fetch(res.data.signedUrl);
@@ -186,42 +209,59 @@ export default function UserFormsPage() {
       <AppHeader title="Meus Formulários" subtitle={user?.email} />
 
       {/* Content */}
-      <main className="max-w-5xl mx-auto px-4 py-8 flex-1">
+      <main className="max-w-7xl mx-auto px-4 py-8 flex-1 w-full">
         {/* Stats Cards */}
         {!loading && forms.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-sm">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Total</p>
-              <p className="text-2xl font-bold text-slate-900">{formStats.total}</p>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center">
+                  <FileText size={22} className="text-slate-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total</p>
+                  <p className="text-2xl font-bold text-slate-900">{formStats.total}</p>
+                </div>
+              </div>
             </div>
-            <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-sm">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Pendentes</p>
-              <p className="text-2xl font-bold text-slate-900">
-                {formStats.pending}
-              </p>
+            <div className="bg-white rounded-lg border border-amber-200 p-4 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center">
+                  <Clock size={22} className="text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-amber-600 uppercase tracking-wider">Pendentes</p>
+                  <p className="text-2xl font-bold text-amber-700">{formStats.pending}</p>
+                </div>
+              </div>
             </div>
             <div className="bg-white rounded-lg border border-emerald-200 p-4 shadow-sm">
-              <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Concluídos</p>
-              <p className="text-2xl font-bold text-emerald-700">
-                {formStats.completed}
-              </p>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
+                  <CheckCircle size={22} className="text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Concluídos</p>
+                  <p className="text-2xl font-bold text-emerald-700">{formStats.completed}</p>
+                </div>
+              </div>
             </div>
           </div>
         )}
 
         {loading ? (
-          <div className="w-full flex flex-col items-center justify-center py-20 bg-white rounded-lg border border-slate-200 shadow-sm">
+          <div className="flex flex-col items-center justify-center py-20 bg-white rounded-lg border border-slate-200 shadow-sm">
             <Loader2 className="h-12 w-12 animate-spin text-slate-700 mb-3" />
             <p className="text-slate-600 font-semibold">Carregando formulários...</p>
           </div>
         ) : forms.length === 0 ? (
-          <div className="w-full text-center py-20 bg-white rounded-lg border border-slate-200 shadow-sm">
-            <FileText size={64} className="mx-auto mb-4 text-slate-300" />
+          <div className="text-center py-20 bg-white rounded-lg border border-slate-200 shadow-sm">
+            <Inbox size={64} className="mx-auto mb-4 text-slate-300" />
             <h3 className="text-lg font-bold text-slate-900 mb-2">
               Nenhum formulário atribuído
             </h3>
-            <p className="text-slate-500">
-              Você ainda não possui formulários para preencher.
+            <p className="text-slate-500 max-w-sm mx-auto">
+              Você ainda não possui formulários para preencher. Quando um administrador enviar um formulário, ele aparecerá aqui.
             </p>
           </div>
         ) : (
@@ -233,7 +273,7 @@ export default function UserFormsPage() {
                   <thead className="bg-slate-900">
                     <tr>
                       <th className="text-left text-xs font-bold text-slate-300 uppercase tracking-wider px-6 py-4">
-                        Formulário
+                        Nome do Formulário
                       </th>
                       <th className="text-left text-xs font-bold text-slate-300 uppercase tracking-wider px-6 py-4">
                         Status
@@ -242,7 +282,7 @@ export default function UserFormsPage() {
                         Recebido em
                       </th>
                       <th className="text-right text-xs font-bold text-slate-300 uppercase tracking-wider px-6 py-4">
-                        Ação
+                        Ações
                       </th>
                     </tr>
                   </thead>
@@ -261,8 +301,7 @@ export default function UserFormsPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-full border-2 ${STATUS_COLORS[form.status]}`}>
-                            {STATUS_ICONS[form.status]}
+                          <span className={`inline-flex px-3 py-1.5 text-xs font-bold rounded-full border-2 ${STATUS_COLORS[form.status]}`}>
                             {STATUS_LABELS[form.status]}
                           </span>
                         </td>
@@ -270,7 +309,16 @@ export default function UserFormsPage() {
                           <p className="text-sm font-medium text-slate-700">{formatDate(form.sentAt)}</p>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleViewForm(form.id)}
+                              className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                              title={canEdit(form.status) ? 'Preencher' : 'Visualizar'}
+                            >
+                              <Eye size={18} />
+                            </button>
+
                             {canDownloadReport(form.status) && (
                               <button
                                 type="button"
@@ -281,17 +329,19 @@ export default function UserFormsPage() {
                                 <Download size={18} />
                               </button>
                             )}
+
                             <button
                               type="button"
-                              onClick={() => handleViewForm(form.id)}
-                              className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-lg transition-colors ${
-                                canEdit(form.status)
-                                  ? 'bg-slate-900 text-white hover:bg-slate-800'
-                                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                              }`}
+                              onClick={() => handleDeleteClick(form)}
+                              disabled={deletingFormId === form.id}
+                              className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50"
+                              title="Remover Formulário"
                             >
-                              <Eye size={16} />
-                              {canEdit(form.status) ? 'Preencher' : 'Visualizar'}
+                              {deletingFormId === form.id ? (
+                                <Loader2 size={18} className="animate-spin" />
+                              ) : (
+                                <Trash2 size={18} />
+                              )}
                             </button>
                           </div>
                         </td>
@@ -351,6 +401,63 @@ export default function UserFormsPage() {
           </>
         )}
       </main>
+
+      {/* Delete Confirmation Modal */}
+      {deleteModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center px-4">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-strong border-2 border-slate-200 overflow-hidden">
+            <div className="p-6 bg-slate-900 rounded-t-2xl">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <Trash2 size={20} className="text-red-400" />
+                Remover formulário
+              </h2>
+              <p className="text-sm text-slate-300 mt-1">O formulário será removido da sua lista.</p>
+            </div>
+            <div className="p-6">
+              <p className="text-slate-700 mb-2">Você está prestes a remover o formulário:</p>
+              <p className="font-bold text-slate-900 text-lg mb-4 wrap-break-word">{selectedFormName || '—'}</p>
+
+              <div className="p-4 bg-amber-50 border-2 border-amber-200 rounded-xl">
+                <p className="text-sm text-amber-800 font-semibold">
+                  Nota: O formulário será removido apenas da sua lista. O administrador ainda terá acesso a ele.
+                </p>
+              </div>
+            </div>
+            <div className="p-6 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteModalOpen(false);
+                  setSelectedFormId(null);
+                  setSelectedFormName('');
+                }}
+                disabled={!!deletingFormId}
+                className="px-4 py-2.5 rounded-xl font-bold border-2 border-slate-200 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmDelete()}
+                disabled={!!deletingFormId}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {deletingFormId ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Removendo...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={16} />
+                    Remover
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <AppFooter />
     </div>
