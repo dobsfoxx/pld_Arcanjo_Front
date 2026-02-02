@@ -2253,9 +2253,9 @@ export default function PLDBuilderPage() {
                           }
                           onMoveUp={originalIdx === 0 ? undefined : () => moveQuestion(q.id, -1)}
                           onMoveDown={originalIdx === total - 1 ? undefined : () => moveQuestion(q.id, 1)}
-                          onMoveTo={total > 1 ? (position) => moveQuestionTo(q.id, position) : undefined}
+                          onMoveTo={total > 1 ? (position: number) => moveQuestionTo(q.id, position) : undefined}
                           onChange={(patch) => updateQuestion(q.id, patch)}
-                          onChangeSync={(patch) => updateQuestionSync(q.id, patch)}
+                          onChangeSync={(patch: Partial<Question>) => updateQuestionSync(q.id, patch)}
                           onDelete={() => deleteQuestionLocal(q.id)}
                           onPersist={() => persistBuilder({ silent: true, reload: false, setBusy: false })}
                           canEdit={canEdit}
