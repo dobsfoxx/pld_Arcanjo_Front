@@ -96,7 +96,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         >
           <Upload className={`h-5 w-5 mr-2 ${disabled ? 'text-slate-400' : 'text-slate-500'}`} aria-hidden="true" />
           <span className={`text-sm font-medium ${disabled ? 'text-slate-400' : 'text-slate-600'}`}>
-            Clique para selecionar (pdf, doc/docx, xls/xlsx, csv, mp4, txt, jpg, png, gif • até 20MB)
+            Clique para selecionar 
           </span>
           <input 
             type="file" 

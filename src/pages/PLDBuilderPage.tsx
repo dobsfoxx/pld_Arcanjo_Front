@@ -74,6 +74,14 @@ export default function PLDBuilderPage() {
   const [concludeName, setConcludeName] = useState('');
   const [concludeSentToEmail, setConcludeSentToEmail] = useState('');
   type ConcludeInstituicao = { id: string; nome: string; cnpj: string };
+  type ApiConcludeInstituicao = { id?: string | null; nome?: string | null; cnpj?: string | null };
+  type ApiFormMetadata = {
+    instituicoes?: ApiConcludeInstituicao[] | null;
+    qualificacaoAvaliador?: string | null;
+    mostrarMetodologia?: 'MOSTRAR' | 'NAO_MOSTRAR' | null;
+    incluirRecomendacoes?: 'INCLUIR' | 'NAO_INCLUIR' | null;
+  };
+  type ApiConcludedForm = { name?: string | null; metadata?: ApiFormMetadata | null; sections?: PldSection[] | null };
   const [concludeInstituicoes, setConcludeInstituicoes] = useState<ConcludeInstituicao[]>([]);
   const [concludeQualificacaoAvaliador, setConcludeQualificacaoAvaliador] = useState('');
   const [concludeMostrarMetodologia, setConcludeMostrarMetodologia] = useState<'MOSTRAR' | 'NAO_MOSTRAR'>('MOSTRAR');
@@ -435,7 +443,7 @@ export default function PLDBuilderPage() {
     } finally {
       setLoading(false);
     }
-  }, [defaultItem, searchParams, canEdit]);
+  }, [searchParams, canEdit]);
 
   useEffect(() => {
     void loadSections();
@@ -450,20 +458,22 @@ export default function PLDBuilderPage() {
         setLoading(true);
         try {
           const res = await pldBuilderApi.getConcludedForm(formIdParam);
-          const form = res.data.form;
+          const form = res.data.form as ApiConcludedForm | null;
           
-          if (form && form.sections) {
-            setEditFormName(form.name);
+          if (form && Array.isArray(form.sections)) {
+            setEditFormName(form.name ?? '');
             
             // Carregar metadados salvos se existirem
             if (form.metadata) {
               const meta = form.metadata;
               if (Array.isArray(meta.instituicoes) && meta.instituicoes.length > 0) {
-                setConcludeInstituicoes(meta.instituicoes.map((inst: any, idx: number) => ({
-                  id: inst.id || `inst_${Date.now()}_${idx}`,
-                  nome: inst.nome || '',
-                  cnpj: inst.cnpj || '',
-                })));
+                setConcludeInstituicoes(
+                  meta.instituicoes.map((inst, idx) => ({
+                    id: inst?.id ?? `inst_${Date.now()}_${idx}`,
+                    nome: inst?.nome ?? '',
+                    cnpj: inst?.cnpj ?? '',
+                  }))
+                );
               }
               if (meta.qualificacaoAvaliador) {
                 setConcludeQualificacaoAvaliador(meta.qualificacaoAvaliador);
@@ -475,7 +485,7 @@ export default function PLDBuilderPage() {
                 setConcludeIncluirRecomendacoes(meta.incluirRecomendacoes);
               }
               // Se tem instituições e qualificação preenchidos, marca como configurado
-              const hasInst = Array.isArray(meta.instituicoes) && meta.instituicoes.some((i: any) => i.nome?.trim());
+              const hasInst = Array.isArray(meta.instituicoes) && meta.instituicoes.some((i) => i?.nome?.trim());
               const hasQual = meta.qualificacaoAvaliador?.trim();
               if (hasInst && hasQual) {
                 setMetadataConfigured(true);
@@ -483,42 +493,7 @@ export default function PLDBuilderPage() {
             }
             
             // Mapear seções do formulário para o formato do builder
-            const mappedSections = form.sections.map((sec: any) => ({
-              id: sec.id,
-              item: sec.item,
-              customLabel: sec.customLabel ?? null,
-              hasNorma: !!sec.hasNorma,
-              normaReferencia: sec.normaReferencia ?? null,
-              descricao: sec.descricao ?? null,
-              questions: sec.questions.map((q: any) => ({
-                id: q.id,
-                sectionId: sec.id,
-                texto: q.texto,
-                aplicavel: q.aplicavel,
-                respondida: q.respondida,
-                capitulacao: q.capitulacao ?? null,
-                criticidade: q.criticidade,
-                resposta: q.resposta ?? null,
-                respostaTexto: q.respostaTexto ?? null,
-                deficienciaTexto: q.deficienciaTexto ?? null,
-                recomendacaoTexto: q.recomendacaoTexto ?? null,
-                testStatus: q.testStatus ?? null,
-                testDescription: q.testDescription ?? null,
-                requisicaoRef: q.requisicaoRef ?? null,
-                respostaTesteRef: q.respostaTesteRef ?? null,
-                amostraRef: q.amostraRef ?? null,
-                evidenciasRef: q.evidenciasRef ?? null,
-                actionOrigem: q.actionOrigem ?? null,
-                actionResponsavel: q.actionResponsavel ?? null,
-                actionDescricao: q.actionDescricao ?? null,
-                actionDataApontamento: q.actionDataApontamento ?? null,
-                actionPrazoOriginal: q.actionPrazoOriginal ?? null,
-                actionPrazoAtual: q.actionPrazoAtual ?? null,
-                actionComentarios: q.actionComentarios ?? null,
-                attachments: q.attachments ?? [],
-              })),
-              attachments: sec.attachments ?? [],
-            }));
+            const mappedSections = form.sections.map(mapApiSectionToState);
 
             sectionsRef.current = mappedSections;
             setSections(mappedSections);
@@ -1180,7 +1155,7 @@ export default function PLDBuilderPage() {
         openConcludeModal();
       }
     })();
-  }, [searchParams, canEdit, navigate, openConcludeModal]);
+  }, [searchParams, canEdit, navigate, openConcludeModal, loadSections]);
 
   const handleCancelConcludeModal = () => {
     setConcludeModalOpen(false);
@@ -2255,7 +2230,7 @@ export default function PLDBuilderPage() {
                           onMoveDown={originalIdx === total - 1 ? undefined : () => moveQuestion(q.id, 1)}
                           onMoveTo={total > 1 ? (position: number) => moveQuestionTo(q.id, position) : undefined}
                           onChange={(patch) => updateQuestion(q.id, patch)}
-                          onChangeSync={(patch: Partial<Question>) => updateQuestionSync(q.id, patch)}
+                          onChangeSync={(patch) => updateQuestionSync(q.id, patch)}
                           onDelete={() => deleteQuestionLocal(q.id)}
                           onPersist={() => persistBuilder({ silent: true, reload: false, setBusy: false })}
                           canEdit={canEdit}
@@ -2328,7 +2303,7 @@ export default function PLDBuilderPage() {
                     <button
                       onClick={addQuestion}
                       disabled={!canAddQuestion}
-                      className="w-full py-4 border bg-white border-slate-200 rounded-lg flex items-center justify-center text-slate-600 font-semibold hover:bg-white hover:border-blue-600 hover:text-blue-700 transition-colors group bg-slate-50/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full py-4 border border-slate-200 rounded-lg flex items-center justify-center text-slate-600 font-semibold hover:bg-white hover:border-blue-600 hover:text-blue-700 transition-colors group bg-slate-50/50 disabled:opacity-50 disabled:cursor-not-allowed"
                       title={
                         canAddQuestion
                           ? 'Adicionar nova questão'
